@@ -20,6 +20,17 @@ public class XmppClient {
 	private ChatManager chatManager;
 	private Chat chat;
 	
+	/**
+	 * The listener that will be used to redirect the message to the {@link NetworkCommunicationManager}.
+	 */
+	public OnMessageListener onMessageListener;
+	
+	/**
+	 * Constructor
+	 * @param host The actual host name (IP address or domain name) of the XMPP server
+	 * @param port The port that the XMPP server is listening on for connections
+	 * @param serviceName The name of the XMPP service that the JIDs are derived using 
+	 */
 	public XmppClient(String host, int port, String serviceName){
 		ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration(host, port, serviceName);
 		connection = new XMPPConnection(connectionConfiguration);
@@ -50,10 +61,9 @@ public class XmppClient {
 	 * @param ownPassword The password of the QPhone on the server.
 	 * @param ownResource The resource name of the QPhone on the server.
 	 * @param targetUsername The username of the controller application on the server.
-	 * @param onMessageListener The listener that will be used to redirect the message to the {@link NetworkCommunicationManager}.
 	 * @throws XMPPException
 	 */
-	public void startSession(String ownUsername, String ownPassword, String ownResource, String targetUsername, final OnMessageListener onMessageListener) throws XMPPException {
+	public void startSession(String ownUsername, String ownPassword, String ownResource, String targetUsername) throws XMPPException {
 		if(!connection.isConnected()){
 			connect();
 		}
@@ -61,9 +71,10 @@ public class XmppClient {
 		
 		chatManager = connection.getChatManager();
 		chat = chatManager.createChat(targetUsername, new MessageListener(){
-			@Override
 			public void processMessage(Chat chat, Message message) {
-				onMessageListener.onMessage(message.getBody());
+				if (onMessageListener != null) {
+					onMessageListener.onMessage(message.getBody());
+				}
 			}
 		});
 	}

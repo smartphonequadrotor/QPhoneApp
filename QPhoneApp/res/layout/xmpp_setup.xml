@@ -23,7 +23,8 @@
     <EditText
         android:id="@+id/serverAddressTxt"
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content" 
+        android:text="abhin-laptop" />
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
@@ -31,7 +32,8 @@
     <EditText
         android:id="@+id/serverPortNumberTxt"
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:text="5222" />
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
@@ -39,7 +41,8 @@
     <EditText
         android:id="@+id/jabbelIdTxt"
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:text="QPhoneTest@abhin-laptop" />
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
@@ -47,7 +50,9 @@
     <EditText
         android:id="@+id/passwordTxt"
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:text="MegatronDump"
+        android:inputType="textPassword" />
     <Button 
         android:id="@+id/connectBtn"
         android:layout_width="fill_parent"
