@@ -4,6 +4,11 @@ public class NetworkCommunicationManager {
 	private XmppClient xmppClient;
 	private DirectSocketClient directSocketClient;
 	
+	private String xmppOwnUsername;
+	private String xmppOwnPassword;
+	private String xmppOwnResource;
+	private String xmppTargetUsername;
+	
 	/**
 	 * In case both the connection clients ( {@link XmppClient} and {@link DirectSocketClient} )
 	 * are connected, then one of them will be chosen when sending the message using this variable.
@@ -30,6 +35,38 @@ public class NetworkCommunicationManager {
 		this.directSocketClient = directSocketClient;
 	}
 	
+	public String getXmppOwnUsername() {
+		return xmppOwnUsername;
+	}
+
+	public void setXmppOwnUsername(String xmppOwnUsername) {
+		this.xmppOwnUsername = xmppOwnUsername;
+	}
+
+	public String getXmppOwnPassword() {
+		return xmppOwnPassword;
+	}
+
+	public void setXmppOwnPassword(String xmppOwnPassword) {
+		this.xmppOwnPassword = xmppOwnPassword;
+	}
+
+	public String getXmppOwnResource() {
+		return xmppOwnResource;
+	}
+
+	public void setXmppOwnResource(String xmppOwnResource) {
+		this.xmppOwnResource = xmppOwnResource;
+	}
+
+	public String getXmppTargetUsername() {
+		return xmppTargetUsername;
+	}
+
+	public void setXmppTargetUsername(String xmppTargetUsername) {
+		this.xmppTargetUsername = xmppTargetUsername;
+	}
+
 	/**
 	 * This method chooses the best communication method available out of {@link XmppClient}
 	 * and {@link DirectSocketClient} based on the value of preferredCommunicationMethod and 
@@ -39,14 +76,9 @@ public class NetworkCommunicationManager {
 	public void connect() throws Exception {
 		if (xmppClient == null && directSocketClient == null) {
 			throw new Exception("Un-initialized communication clients; please initialize one");
-		} else if (xmppClient != null && directSocketClient != null) {
-			if ( preferredCommunicationMethod == CommunicationMethods.DIRECT_SOCKET ) {
-				//TODO directSocketClient.connect();
-			} else {
-				xmppClient.connect();
-			}
-		} else if (xmppClient != null ) {
+		} else if (xmppClient != null && (directSocketClient == null || preferredCommunicationMethod == CommunicationMethods.XMPP)){
 			xmppClient.connect();
+			xmppClient.startSession(xmppOwnUsername, xmppOwnPassword, xmppOwnResource, xmppTargetUsername);
 		} else {
 			//TODO directSocketClient.connect();
 		}

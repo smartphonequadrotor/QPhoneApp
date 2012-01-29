@@ -24,7 +24,7 @@
         android:id="@+id/serverAddressTxt"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content" 
-        android:text="abhin-laptop" />
+        android:text="tomatohome.net" />
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
@@ -37,12 +37,12 @@
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="@string/jabberIdLbl" />
+        android:text="@string/ownJabberIdLbl" />
     <EditText
-        android:id="@+id/jabbelIdTxt"
+        android:id="@+id/ownJabberIdTxt"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="QPhoneTest@abhin-laptop" />
+        android:text="abhin-p@tomatohome.net" />
     <TextView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
@@ -51,8 +51,17 @@
         android:id="@+id/passwordTxt"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="MegatronDump"
+        android:text="eraserQW12"
         android:inputType="textPassword" />
+    <TextView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/targetJabberIdLbl" />
+    <EditText
+        android:id="@+id/targetJabberIdTxt"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="abhin-c@tomatohome.net" />
     <Button 
         android:id="@+id/connectBtn"
         android:layout_width="fill_parent"

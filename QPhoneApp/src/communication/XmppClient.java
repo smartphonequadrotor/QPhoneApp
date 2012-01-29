@@ -33,6 +33,7 @@ public class XmppClient {
 	 */
 	public XmppClient(String host, int port, String serviceName){
 		ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration(host, port, serviceName);
+		connectionConfiguration.setSASLAuthenticationEnabled(false);
 		connection = new XMPPConnection(connectionConfiguration);
 	}
 	
