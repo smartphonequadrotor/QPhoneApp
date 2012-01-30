@@ -1,8 +1,14 @@
 package communication;
 
+import android.util.Log;
+
 public class NetworkCommunicationManager {
+	public static final String TAG = NetworkCommunicationManager.class.getName();
+	
 	private XmppClient xmppClient;
 	private DirectSocketClient directSocketClient;
+	
+	private NcmOnMessageListener onMessageListener;
 	
 	private String xmppOwnUsername;
 	private String xmppOwnPassword;
@@ -16,14 +22,16 @@ public class NetworkCommunicationManager {
 	public CommunicationMethods preferredCommunicationMethod = CommunicationMethods.DIRECT_SOCKET;
 	
 	public NetworkCommunicationManager () {
-		
+		onMessageListener = new NcmOnMessageListener();
 	}
 	
 	public NetworkCommunicationManager (XmppClient xmppClient) {
+		this();
 		this.xmppClient = xmppClient;
 	}
 	
 	public NetworkCommunicationManager (DirectSocketClient directSocketClient) {
+		this();
 		this.directSocketClient = directSocketClient;
 	}
 	
@@ -79,8 +87,22 @@ public class NetworkCommunicationManager {
 		} else if (xmppClient != null && (directSocketClient == null || preferredCommunicationMethod == CommunicationMethods.XMPP)){
 			xmppClient.connect();
 			xmppClient.startSession(xmppOwnUsername, xmppOwnPassword, xmppOwnResource, xmppTargetUsername);
+			xmppClient.onMessageListener = onMessageListener;
 		} else {
 			//TODO directSocketClient.connect();
 		}
+	}
+	
+	/**
+	 * This class serves as the listener for the {@link NetworkCommunicationManager} when either the {@link XmppClient}
+	 * or the {@link DirectSocketClient} receive a message over the network.
+	 * @author Abhin
+	 *
+	 */
+	public class NcmOnMessageListener extends OnMessageListener {
+		@Override
+		public void onMessage(String message) {
+			Log.d(TAG, message);
+		}		
 	}
 }
