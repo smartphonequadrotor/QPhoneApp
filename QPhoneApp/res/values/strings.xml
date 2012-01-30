@@ -9,5 +9,6 @@
     <string name="jabberIdLbl">Jabber ID:</string>
     <string name="passwordLbl">Password:</string>
     <string name="connect">Connect</string>
+    <string name="xmpp_menu_sendmsg">Send Message</string>
 
 </resources>

@@ -1,12 +1,19 @@
 package com.ventus.smartphonequadrotor.qphoneapp;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
 public class XmppConnectionActivity extends Activity {
+	public static final String TAG = XmppConnectionActivity.class.getName();
 	private EditText serverAddress;
 	private EditText serverPortNum;
 	private EditText password;
@@ -31,4 +38,35 @@ public class XmppConnectionActivity extends Activity {
 			}
 		});
     }
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		MenuInflater inflater = getMenuInflater();
+		inflater.inflate(R.menu.xmpp_menu, menu);
+		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		switch (item.getItemId()) {
+		case R.id.xmpp_menu_sendmsg:
+			getUserMessage();
+			return true;
+		default:
+			return super.onOptionsItemSelected(item);
+		}
+	}
+
+	private void getUserMessage() {
+		final EditText userMessage = new EditText(this);
+		new AlertDialog.Builder(this)
+			.setTitle("Send XMPP message")
+			.setMessage("Send XMPP message")
+			.setView(userMessage)
+			.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int which) {
+					Log.d(TAG, "text used: " + userMessage.getText());
+				}
+			}).show();
+	}
 }
