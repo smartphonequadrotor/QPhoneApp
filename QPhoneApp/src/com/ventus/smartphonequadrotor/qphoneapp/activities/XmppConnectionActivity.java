@@ -1,5 +1,7 @@
 package com.ventus.smartphonequadrotor.qphoneapp.activities;
 
+import java.util.Calendar;
+
 import com.ventus.smartphonequadrotor.qphoneapp.R;
 import com.ventus.smartphonequadrotor.qphoneapp.R.id;
 import com.ventus.smartphonequadrotor.qphoneapp.R.layout;
@@ -41,6 +43,8 @@ public class XmppConnectionActivity extends Activity {
 	private Button connectBtn;
 	private NetworkCommunicationManager networkCommunicationManager;
 	
+	private Calendar calendar;
+	
 	/*************************************************************
 	 * Over-ridden methods from Activity	
 	 */
@@ -66,6 +70,7 @@ public class XmppConnectionActivity extends Activity {
 		startService(mainServiceStarter);
         
         connectBtn.setOnClickListener(new ConnectBtn_OnClickListener());
+        calendar = Calendar.getInstance();
     }
 
 	@Override
@@ -78,10 +83,9 @@ public class XmppConnectionActivity extends Activity {
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
-		case R.id.xmpp_menu_sendmsg:
-			String userMessage = getUserMessage();
+		case R.id.xmpp_menu_sendtestmsg:
 			Intent messageControllerIntent = new Intent(IntentHandler.MESSAGE_CONTROLLER_ACTION);
-			messageControllerIntent.putExtra(IntentHandler.ActionExtras.MESSAGE_FOR_CONTROLLER.extra, userMessage);
+			messageControllerIntent.putExtra(IntentHandler.ActionExtras.MESSAGE_FOR_CONTROLLER.extra, "qphone time: " + Long.toString(calendar.getTimeInMillis()));
 			sendBroadcast(messageControllerIntent);
 			return true;
 		default:
@@ -109,26 +113,6 @@ public class XmppConnectionActivity extends Activity {
 
     /****************************************************************
      * Helper methods
-     */
-    
-    /**
-     * This method asks the user for a message to be sent to the controller.
-     * @return userMessage String containing the message from the user.
-     */
-	private String getUserMessage() {
-		final EditText userMessage = new EditText(this);
-		new AlertDialog.Builder(this)
-			.setTitle("Send XMPP message")
-			.setMessage("Send XMPP message")
-			.setView(userMessage)
-			.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog, int which) {
-					//use intents to send data from here to the network communication manager
-					Log.d(TAG, "text used: " + userMessage.getText());
-				}
-			}).show();
-		return userMessage.getText().toString();
-	}
 	
 	/**
 	 * Creates an intent that contains all the data that is needed to successfully establish an XMPP connection.

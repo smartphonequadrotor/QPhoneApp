@@ -4,11 +4,15 @@ import org.jivesoftware.smack.Chat;
 import org.jivesoftware.smack.ChatManager;
 import org.jivesoftware.smack.Connection;
 import org.jivesoftware.smack.ConnectionConfiguration;
+import org.jivesoftware.smack.ConnectionCreationListener;
+import org.jivesoftware.smack.ConnectionListener;
 import org.jivesoftware.smack.MessageListener;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Presence;
+
+import android.util.Log;
 
 /**
  * This class takes care of all the over-heads of using XMPP as a means of communication.
@@ -16,6 +20,7 @@ import org.jivesoftware.smack.packet.Presence;
  *
  */
 public class XmppClient {
+	public static final String TAG = XmppClient.class.getName();
 	private Connection connection;
 	private ChatManager chatManager;
 	private Chat chat;
@@ -35,6 +40,7 @@ public class XmppClient {
 		ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration(host, port, serviceName);
 		connectionConfiguration.setSASLAuthenticationEnabled(false);
 		connection = new XMPPConnection(connectionConfiguration);
+		Connection.addConnectionCreationListener(connectionCreationListener);
 	}
 	
 	/**
@@ -97,4 +103,11 @@ public class XmppClient {
 	public void sendMessage(String message) throws XMPPException{
 		chat.sendMessage(message);
 	}
+	
+	private ConnectionCreationListener connectionCreationListener = new ConnectionCreationListener() {
+		
+		public void connectionCreated(Connection connection) {
+			Log.d(TAG, "Xmpp Connection Created: " + connection.getHost());
+		}
+	};
 }

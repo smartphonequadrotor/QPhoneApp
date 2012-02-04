@@ -7,6 +7,8 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.IBinder;
+import android.util.Log;
+import android.widget.Toast;
 
 /**
  * This is the main service that does all the processing related to getting data from the
@@ -15,6 +17,7 @@ import android.os.IBinder;
  *
  */
 public class MainService extends Service {
+	public static final String TAG = MainService.class.getName();
 	private IntentHandler intentHandler;
 	private NetworkCommunicationManager networkCommunicationManager;
 
@@ -51,5 +54,31 @@ public class MainService extends Service {
 		intentFilter.addAction(IntentHandler.XMPP_CONNECT_ACTION);
 		registerReceiver(intentHandler, intentFilter);
 	}
-
+	
+	/**
+	 * This uses the network communication manager to send a message to the
+	 * controller (using either xmpp or direct connections).
+	 * @param message
+	 */
+	public void sendMessage(String message) {
+		try {
+			this.networkCommunicationManager.sendMessage(message);
+		} catch (Exception e) {
+			Log.e(TAG, "Message Could not be sent: " + e.getMessage());
+			Toast.makeText(this, "Message could not be sent", Toast.LENGTH_SHORT).show();
+		}
+	}
+	
+	/**
+	 * Uses the network connection manager to setup connection.
+	 * @param intent
+	 */
+	public void setupXmppConnection(Intent intent) {
+		try {
+			this.networkCommunicationManager.setupXmppConnection(intent, this);
+		} catch (Exception e) {
+			Log.e(TAG, "Xmpp connection could not be established: " + e.getMessage());
+			Toast.makeText(this, "Xmpp connection failed", Toast.LENGTH_SHORT).show();
+		}
+	}
 }

@@ -1,5 +1,6 @@
 package com.ventus.smartphonequadrotor.qphoneapp.util.net;
 
+import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 
 import android.content.Context;
@@ -112,12 +113,13 @@ public class NetworkCommunicationManager {
 	}
 	
 	/**
-	 * This method is used by the {@link IntentHandler} when it receives an intent from
+	 * This method is used by the {@link MainService} when it receives an intent from
 	 * the activity requesting a connection between the smartphone and the controller
 	 * through XMPP.
 	 * @param intent The intent that contains the connection data.
+	 * @throws Exception 
 	 */
-	public void setupXmppConnection(Intent intent, Context context) {
+	public void setupXmppConnection(Intent intent, Context context) throws Exception {
 		this.xmppClient = new XmppClient(
 			intent.getStringExtra(IntentHandler.ActionExtras.SERVER_ADDRESS.extra), 
 			Integer.parseInt(intent.getStringExtra(IntentHandler.ActionExtras.SERVER_PORT.extra)), 
@@ -128,11 +130,24 @@ public class NetworkCommunicationManager {
 		this.xmppOwnResource = intent.getStringExtra(IntentHandler.ActionExtras.XMPP_OWN_RESOURCE.extra);
 		this.xmppTargetJid = intent.getStringExtra(IntentHandler.ActionExtras.XMPP_TARGET_JID.extra);
 		this.preferredCommunicationMethod = CommunicationMethods.XMPP;
-		try {
-			this.connect();
-		} catch (Exception e) {
-			Log.e(TAG, "failed to connect xmpp client: " + e.getMessage());
-			Toast.makeText(context, "Could not connect to xmpp server", Toast.LENGTH_LONG).show();
+		this.connect();
+	}
+	
+	/**
+	 * This method is used by the {@link MainService} when it receives an intent (through {@link IntentHandler}).
+	 * This class is obviously used to send a message to the controller once a connection has been established.
+	 * It uses the best connection between the 2 options depending on the value of the preferredCommunicationMethod
+	 * variable.
+	 * @param message The message to be sent
+	 * @throws Exception If neither direct socket nor xmpp connections are setup
+	 */
+	public void sendMessage(String message) throws Exception {
+		if (xmppClient == null && directSocketClient == null) {
+			throw new Exception("Un-initialized communication clients; please initialize one");
+		} else if (xmppClient != null && (directSocketClient == null || preferredCommunicationMethod == CommunicationMethods.XMPP)){
+			xmppClient.sendMessage(message);
+		} else {
+			//TODO directSocketClient.sendMessage(message);
 		}
 	}
 }

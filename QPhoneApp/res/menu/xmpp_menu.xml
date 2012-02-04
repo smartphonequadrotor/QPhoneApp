@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
-    <item android:id="@+id/xmpp_menu_sendmsg" android:title="@string/xmpp_menu_sendmsg"></item>
+    <item android:id="@+id/xmpp_menu_sendtestmsg" android:title="@string/xmpp_menu_sendtestmsg"></item>
 </menu>

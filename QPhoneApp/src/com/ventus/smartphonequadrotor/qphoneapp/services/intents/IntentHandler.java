@@ -49,10 +49,10 @@ public class IntentHandler extends BroadcastReceiver {
 		String action = intent.getAction();
 		
 		if (action.equals(MESSAGE_CONTROLLER_ACTION)) {
-			Log.d(TAG, intent.getStringExtra(ActionExtras.MESSAGE_FOR_CONTROLLER.extra));
-			//get the string that has to be sent to the controller
+			Log.d(TAG, "received message for controller: " + intent.getStringExtra(ActionExtras.MESSAGE_FOR_CONTROLLER.extra));
+			owner.sendMessage(intent.getStringExtra(ActionExtras.MESSAGE_FOR_CONTROLLER.extra));
 		} else if (action.equals(XMPP_CONNECT_ACTION)) {
-			owner.getNetworkCommunicationManager().setupXmppConnection(intent, owner);
+			owner.setupXmppConnection(intent);
 		}
 	}
 	
