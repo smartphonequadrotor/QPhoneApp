@@ -1,4 +1,4 @@
-package communication;
+package com.ventus.smartphonequadrotor.qphoneapp.util.net;
 
 import org.jivesoftware.smack.Chat;
 import org.jivesoftware.smack.ChatManager;
@@ -43,7 +43,6 @@ public class XmppClient {
 	 */
 	public void connect() throws XMPPException {
 		connection.connect();
-		connection.sendPacket(new Presence(Presence.Type.available));
 	}
 	
 	/**
@@ -58,20 +57,21 @@ public class XmppClient {
 	 * This methods logs the user into the XMPP server and then starts a chat with the specified target.
 	 * When a message is received, it is redirected to the {@link NetworkCommunicationManager} using the {@link OnMessageListener}
 	 * object.
-	 * @param ownUsername The username of the QPhone on the server.
+	 * @param ownJid The Jid of the QPhone on the server.
 	 * @param ownPassword The password of the QPhone on the server.
 	 * @param ownResource The resource name of the QPhone on the server.
-	 * @param targetUsername The username of the controller application on the server.
+	 * @param targetJid The Jid of the controller application on the server.
 	 * @throws XMPPException
 	 */
-	public void startSession(String ownUsername, String ownPassword, String ownResource, String targetUsername) throws XMPPException {
+	public void startSession(String ownJid, String ownPassword, String ownResource, String targetJid) throws XMPPException {
 		if(!connection.isConnected()){
 			connect();
 		}
-		connection.login(ownUsername, ownPassword, ownResource);
+		connection.login(ownJid.split("@")[0], ownPassword, ownResource);
+		connection.sendPacket(new Presence(Presence.Type.available));
 		
 		chatManager = connection.getChatManager();
-		chat = chatManager.createChat(targetUsername, new MessageListener(){
+		chat = chatManager.createChat(targetJid, new MessageListener(){
 			public void processMessage(Chat chat, Message message) {
 				if (onMessageListener != null) {
 					onMessageListener.onMessage(message.getBody());

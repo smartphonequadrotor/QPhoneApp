@@ -1,6 +1,11 @@
-package communication;
+package com.ventus.smartphonequadrotor.qphoneapp.util.net;
 
+import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
+
+import android.content.Context;
+import android.content.Intent;
 import android.util.Log;
+import android.widget.Toast;
 
 public class NetworkCommunicationManager {
 	public static final String TAG = NetworkCommunicationManager.class.getName();
@@ -10,10 +15,10 @@ public class NetworkCommunicationManager {
 	
 	private NcmOnMessageListener onMessageListener;
 	
-	private String xmppOwnUsername;
+	private String xmppOwnJid;
 	private String xmppOwnPassword;
 	private String xmppOwnResource;
-	private String xmppTargetUsername;
+	private String xmppTargetJid;
 	
 	/**
 	 * In case both the connection clients ( {@link XmppClient} and {@link DirectSocketClient} )
@@ -43,12 +48,12 @@ public class NetworkCommunicationManager {
 		this.directSocketClient = directSocketClient;
 	}
 	
-	public String getXmppOwnUsername() {
-		return xmppOwnUsername;
+	public String getXmppOwnJid() {
+		return xmppOwnJid;
 	}
 
-	public void setXmppOwnUsername(String xmppOwnUsername) {
-		this.xmppOwnUsername = xmppOwnUsername;
+	public void setXmppOwnJid(String xmppOwnUsername) {
+		this.xmppOwnJid = xmppOwnUsername;
 	}
 
 	public String getXmppOwnPassword() {
@@ -67,12 +72,12 @@ public class NetworkCommunicationManager {
 		this.xmppOwnResource = xmppOwnResource;
 	}
 
-	public String getXmppTargetUsername() {
-		return xmppTargetUsername;
+	public String getXmppTargetJid() {
+		return xmppTargetJid;
 	}
 
-	public void setXmppTargetUsername(String xmppTargetUsername) {
-		this.xmppTargetUsername = xmppTargetUsername;
+	public void setXmppTargetJid(String xmppTargetJid) {
+		this.xmppTargetJid = xmppTargetJid;
 	}
 
 	/**
@@ -86,7 +91,7 @@ public class NetworkCommunicationManager {
 			throw new Exception("Un-initialized communication clients; please initialize one");
 		} else if (xmppClient != null && (directSocketClient == null || preferredCommunicationMethod == CommunicationMethods.XMPP)){
 			xmppClient.connect();
-			xmppClient.startSession(xmppOwnUsername, xmppOwnPassword, xmppOwnResource, xmppTargetUsername);
+			xmppClient.startSession(xmppOwnJid, xmppOwnPassword, xmppOwnResource, xmppTargetJid);
 			xmppClient.onMessageListener = onMessageListener;
 		} else {
 			//TODO directSocketClient.connect();
@@ -104,5 +109,30 @@ public class NetworkCommunicationManager {
 		public void onMessage(String message) {
 			Log.d(TAG, message);
 		}		
+	}
+	
+	/**
+	 * This method is used by the {@link IntentHandler} when it receives an intent from
+	 * the activity requesting a connection between the smartphone and the controller
+	 * through XMPP.
+	 * @param intent The intent that contains the connection data.
+	 */
+	public void setupXmppConnection(Intent intent, Context context) {
+		this.xmppClient = new XmppClient(
+			intent.getStringExtra(IntentHandler.ActionExtras.SERVER_ADDRESS.extra), 
+			Integer.parseInt(intent.getStringExtra(IntentHandler.ActionExtras.SERVER_PORT.extra)), 
+			intent.getStringExtra(IntentHandler.ActionExtras.XMPP_OWN_JID.extra).split("@")[1]
+		);
+		this.xmppOwnJid = intent.getStringExtra(IntentHandler.ActionExtras.XMPP_OWN_JID.extra);
+		this.xmppOwnPassword = intent.getStringExtra(IntentHandler.ActionExtras.XMPP_OWN_PASSWORD.extra);
+		this.xmppOwnResource = intent.getStringExtra(IntentHandler.ActionExtras.XMPP_OWN_RESOURCE.extra);
+		this.xmppTargetJid = intent.getStringExtra(IntentHandler.ActionExtras.XMPP_TARGET_JID.extra);
+		this.preferredCommunicationMethod = CommunicationMethods.XMPP;
+		try {
+			this.connect();
+		} catch (Exception e) {
+			Log.e(TAG, "failed to connect xmpp client: " + e.getMessage());
+			Toast.makeText(context, "Could not connect to xmpp server", Toast.LENGTH_LONG).show();
+		}
 	}
 }

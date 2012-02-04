@@ -1,4 +1,4 @@
-package communication;
+package com.ventus.smartphonequadrotor.qphoneapp.util.net;
 
 /**
  * This object is used to redirect incoming messages from the {@link XmppClient} and {@link DirectSocketClient} objects to
