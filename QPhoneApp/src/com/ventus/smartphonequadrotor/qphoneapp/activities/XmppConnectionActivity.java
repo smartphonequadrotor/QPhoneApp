@@ -41,7 +41,6 @@ public class XmppConnectionActivity extends Activity {
 	private EditText ownJabberId;
 	private EditText targetJabberId;
 	private Button connectBtn;
-	private NetworkCommunicationManager networkCommunicationManager;
 	
 	private Calendar calendar;
 	
@@ -64,8 +63,6 @@ public class XmppConnectionActivity extends Activity {
         targetJabberId = (EditText)findViewById(R.id.targetJabberIdTxt);
         connectBtn = (Button)findViewById(R.id.connectBtn);
         
-        networkCommunicationManager = new NetworkCommunicationManager();
-        
 		Intent mainServiceStarter = new Intent(XmppConnectionActivity.this, MainService.class);
 		startService(mainServiceStarter);
         
@@ -85,7 +82,7 @@ public class XmppConnectionActivity extends Activity {
 		switch (item.getItemId()) {
 		case R.id.xmpp_menu_sendtestmsg:
 			Intent messageControllerIntent = new Intent(IntentHandler.MESSAGE_CONTROLLER_ACTION);
-			messageControllerIntent.putExtra(IntentHandler.ActionExtras.MESSAGE_FOR_CONTROLLER.extra, "qphone time: " + Long.toString(calendar.getTimeInMillis()));
+			//messageControllerIntent.putExtra(IntentHandler.ActionExtras.MESSAGE_FOR_CONTROLLER.extra, "qphone time: " + Long.toString(calendar.getTimeInMillis()));
 			sendBroadcast(messageControllerIntent);
 			return true;
 		default:

@@ -7,12 +7,18 @@ package com.ventus.smartphonequadrotor.qphoneapp.util.json;
  *
  */
 public class Envelope {
+	private Commands Commands;
 	private Request[] Requests;
 	private Responses Responses;
 	
-	public Envelope(Request[] Requests, Responses Responses) {
-		this.Requests = Requests;
-		this.Responses = Responses;
+	public Envelope(Commands commands, Request[] requests, Responses responses) {
+		this.Commands = commands;
+		this.Requests = requests;
+		this.Responses = responses;
+	}
+	
+	public Commands Command() {
+		return Commands;
 	}
 
 	public Request[] getRequests() {
@@ -26,9 +32,10 @@ public class Envelope {
 	@Override
 	public String toString() {
 		return String.format(
-			"Requests: %1$s\nResponses: %2$s\n", 
-			Requests, 
-			Responses
+			"Commands: %1$s\nRequests: %2$s\nResponses: %3$s\n", 
+			Commands.toString(),
+			Requests.toString(), 
+			Responses.toString()
 		);
 	}
 }

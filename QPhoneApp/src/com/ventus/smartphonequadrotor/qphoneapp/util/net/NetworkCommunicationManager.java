@@ -8,6 +8,7 @@ import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.ResponseAbstract;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.Responses;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.TriAxisSensorResponse;
 
 import android.content.Context;
@@ -160,6 +161,28 @@ public class NetworkCommunicationManager {
 			xmppClient.sendMessage(message);
 		} else {
 			//TODO directSocketClient.sendMessage(message);
+		}
+	}
+	
+	//This method is only for testing
+	public void sendGyroResponse(long timestamp, float x, float y, float z) {
+		Envelope envelope = new Envelope(
+			null, 
+			null, 
+			new Responses(
+				new TriAxisSensorResponse[] {
+					new TriAxisSensorResponse(timestamp, x, y, z)
+				}, 
+				null, 
+				null, 
+				null,
+				null
+			)
+		);
+		try {
+			sendMessage(gson.toJson(envelope, Envelope.class));
+		} catch (Exception e) {
+			Log.d(TAG, "Could not send message to controller");
 		}
 	}
 }

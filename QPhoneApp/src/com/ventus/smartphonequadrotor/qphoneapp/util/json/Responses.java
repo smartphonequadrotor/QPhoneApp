@@ -39,11 +39,11 @@ public class Responses {
 	public String toString() {
 		return String.format(
 			"Gyro: %1$s\nAccel: %2$s\nCamera: %3$s\nBattery: %4$s\nGps: %5$s",
-			Gyro,
-			Accel,
-			Camera,
-			Battery,
-			GPS
+			Gyro.toString(),
+			Accel.toString(),
+			Camera.toString(),
+			Battery.toString(),
+			GPS.toString()
 		);
 	}
 }
