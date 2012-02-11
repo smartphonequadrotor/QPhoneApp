@@ -1,7 +1,14 @@
 package com.ventus.smartphonequadrotor.qphoneapp.util.net;
 
+import java.lang.reflect.Type;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.ResponseAbstract;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.TriAxisSensorResponse;
 
 import android.content.Context;
 import android.content.Intent;
@@ -15,6 +22,7 @@ public class NetworkCommunicationManager {
 	private DirectSocketClient directSocketClient;
 	
 	private NcmOnMessageListener onMessageListener;
+	private Gson gson;
 	
 	private String xmppOwnJid;
 	private String xmppOwnPassword;
@@ -29,6 +37,7 @@ public class NetworkCommunicationManager {
 	
 	public NetworkCommunicationManager () {
 		onMessageListener = new NcmOnMessageListener();
+		gson = new Gson();
 	}
 	
 	public NetworkCommunicationManager (XmppClient xmppClient) {
@@ -108,7 +117,10 @@ public class NetworkCommunicationManager {
 	public class NcmOnMessageListener extends OnMessageListener {
 		@Override
 		public void onMessage(String message) {
-			Log.d(TAG, message);
+			Log.d(TAG, "Message from controller: " + message);
+			//attempt to decode the message
+			Envelope envelope = gson.fromJson(message, Envelope.class);
+			Log.d(TAG, envelope.toString());
 		}		
 	}
 	
