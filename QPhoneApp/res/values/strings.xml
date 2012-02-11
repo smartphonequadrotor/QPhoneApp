@@ -11,5 +11,11 @@
     <string name="connect">Connect</string>
     <string name="targetJabberIdLbl">Target Jabber ID:</string>
     <string name="xmpp_menu_sendtestmsg">Send Test Message</string>
+    <string name="xmpp_menu_sendmsg">Send Message</string>
+    <string name="bt_paired_devices_lbl">Paired Devices</string>
+    <string name="bt_scanned_devices_lbl">Scanned Devices</string>
+    <string name="bt_scan_devices_btn_txt">Scan Devices</string>
+    <string name="next_btn_txt">Next</string>
+    <string name="previous_btn_txt">Previous</string>
 
 </resources>
