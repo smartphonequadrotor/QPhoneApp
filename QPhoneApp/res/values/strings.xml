@@ -15,6 +15,15 @@
     <string name="bt_paired_devices_lbl">Paired Devices</string>
     <string name="bt_scanned_devices_lbl">Scanned Devices</string>
     <string name="bt_scan_devices_btn_txt">Scan Devices</string>
+    <string name="bt_disabled_app_shutdown">This application cannot function without bluetooth. The application will now shut down.</string>
+    <string name="bt_discovery_failed">Bluetooth device discovery failure!</string>
+    <string name="bt_device_connected">Bluetooth device connected!</string>
+    <string name="bt_device_disconnected">Bluetooth device disconnected!</string>
+    <string name="bt_device_connection_failure">Bluetooth connection failure!</string>
+    <string name="net_device_connected">Network device connected!</string>
+    <string name="net_device_disconnected">Network device disconnected!</string>
+    <string name="net_device_connection_failure">Network connection failure!</string>
+    <string name="ready_to_fly_lbl">Ready To Fly!</string>
     <string name="next_btn_txt">Next</string>
     <string name="previous_btn_txt">Previous</string>
 

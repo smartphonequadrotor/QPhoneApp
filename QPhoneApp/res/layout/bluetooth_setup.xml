@@ -1,34 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:orientation="vertical" >
     <TextView
+        android:id="@+id/bt_paired_devices"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:text="@string/bt_paired_devices_lbl" />
     <ListView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/pairedBtDevicesList" />
+        android:layout_below="@id/bt_paired_devices"
+        android:id="@+id/bt_paired_devices_list" />
     <TextView
+        android:id="@+id/bt_scanned_devices"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:text="@string/bt_scanned_devices_lbl" 
-        android:visibility="gone"/>
+        android:layout_below="@id/bt_paired_devices_list"
+        android:visibility="invisible"
+        android:text="@string/bt_scanned_devices_lbl" />
     <ListView
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/scannedBtDevicesList" 
-        android:visibility="gone" />
+        android:layout_below="@id/bt_scanned_devices"
+        android:id="@+id/bt_scanned_devices_list" />
     <Button
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
+        android:layout_below="@id/bt_scanned_devices_list"
         android:id="@+id/btScanDevicesBtn"
         android:text="@string/bt_scan_devices_btn_txt" />
     <Button
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
         android:id="@+id/btNextBtn"
+        android:enabled="false"
         android:text="@string/next_btn_txt" />
-</LinearLayout>
+</RelativeLayout>

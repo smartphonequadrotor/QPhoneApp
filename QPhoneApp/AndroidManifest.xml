@@ -22,6 +22,9 @@
             </intent-filter>
         </activity>
         <service android:name=".services.MainService" android:exported="false"></service>
+        <activity android:name=".activities.XmppConnectionActivity">
+        </activity>
+        <activity android:name=".activities.ReadyToFlyActivity"></activity>
     </application>
 
 </manifest>

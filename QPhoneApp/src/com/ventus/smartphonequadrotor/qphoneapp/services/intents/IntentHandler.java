@@ -40,6 +40,11 @@ public class IntentHandler extends BroadcastReceiver {
 	 */
 	public static final String DIRECT_CONNECT_ACTION = ACTION_PRE_STRING + "DIRECT_CONNECT_ACTION";
 	
+	/**
+	 * This action string is used to connect to the QCB using Bluetooth
+	 */
+	public static final String BLUETOOTH_CONNECT_ACTION = ACTION_PRE_STRING + "BLUETOOTH_CONNECT_ACTION";
+	
 	public IntentHandler(MainService owner) {
 		this.owner = owner;
 	}
@@ -53,7 +58,11 @@ public class IntentHandler extends BroadcastReceiver {
 //			owner.sendMessage(intent.getStringExtra(ActionExtras.MESSAGE_FOR_CONTROLLER.extra));
 			owner.getNetworkCommunicationManager().sendGyroResponse(23424L, 45.98f, 849.89f, 3.383f);	//temp... for debugging
 		} else if (action.equals(XMPP_CONNECT_ACTION)) {
-			owner.setupXmppConnection(intent);
+			owner.getNetworkCommunicationManager().setupXmppConnection(intent, owner);
+		} else if (action.equals(BLUETOOTH_CONNECT_ACTION)) {
+			String address = intent.getStringExtra(ActionExtras.BLUETOOTH_ADDRESS.extra);
+			owner.getBluetoothManager().connect(address);
+			//TODO establish a connection with the device using the bluetooth manager
 		}
 	}
 	
@@ -97,7 +106,13 @@ public class IntentHandler extends BroadcastReceiver {
 		/*
 		 * This is the message to be sent to the controller.
 		 */
-		MESSAGE_FOR_CONTROLLER("MESSAGE_FOR_CONTROLLER");
+		MESSAGE_FOR_CONTROLLER("MESSAGE_FOR_CONTROLLER"),
+		
+		/**
+		 * This is the MAC address for the bluetooth device to which the connection
+		 * has to be made.
+		 */
+		BLUETOOTH_ADDRESS("BLUETOOTH_ADDRESS");
 		
 		public final String extra;
 		ActionExtras(String extra) {

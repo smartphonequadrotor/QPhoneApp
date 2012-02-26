@@ -7,7 +7,7 @@ public class Commands {
 		Move = move;
 	}
 
-	public MoveCommand[] getMove() {
+	public MoveCommand[] getMoveCommandArray() {
 		return Move;
 	}
 

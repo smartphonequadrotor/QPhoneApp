@@ -1,9 +1,8 @@
 package com.ventus.smartphonequadrotor.qphoneapp.util.net;
 
-import java.lang.reflect.Type;
-
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import com.ventus.smartphonequadrotor.qphoneapp.activities.BluetoothConnectionActivity;
+import com.ventus.smartphonequadrotor.qphoneapp.activities.XmppConnectionActivity;
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
@@ -18,6 +17,7 @@ import android.widget.Toast;
 
 public class NetworkCommunicationManager {
 	public static final String TAG = NetworkCommunicationManager.class.getName();
+	private MainService owner;
 	
 	private XmppClient xmppClient;
 	private DirectSocketClient directSocketClient;
@@ -36,18 +36,19 @@ public class NetworkCommunicationManager {
 	 */
 	public CommunicationMethods preferredCommunicationMethod = CommunicationMethods.DIRECT_SOCKET;
 	
-	public NetworkCommunicationManager () {
+	public NetworkCommunicationManager (MainService owner) {
+		this.owner = owner;
 		onMessageListener = new NcmOnMessageListener();
 		gson = new Gson();
 	}
 	
-	public NetworkCommunicationManager (XmppClient xmppClient) {
-		this();
+	public NetworkCommunicationManager (XmppClient xmppClient, MainService owner) {
+		this(owner);
 		this.xmppClient = xmppClient;
 	}
 	
-	public NetworkCommunicationManager (DirectSocketClient directSocketClient) {
-		this();
+	public NetworkCommunicationManager (DirectSocketClient directSocketClient, MainService owner) {
+		this(owner);
 		this.directSocketClient = directSocketClient;
 	}
 	
@@ -121,6 +122,7 @@ public class NetworkCommunicationManager {
 			Log.d(TAG, "Message from controller: " + message);
 			//attempt to decode the message
 			Envelope envelope = gson.fromJson(message, Envelope.class);
+			owner.getDataAggregator().processControllerMessage(envelope);
 			Log.d(TAG, envelope.toString());
 		}		
 	}
@@ -132,7 +134,7 @@ public class NetworkCommunicationManager {
 	 * @param intent The intent that contains the connection data.
 	 * @throws Exception 
 	 */
-	public void setupXmppConnection(Intent intent, Context context) throws Exception {
+	public void setupXmppConnection(Intent intent, Context context) {
 		this.xmppClient = new XmppClient(
 			intent.getStringExtra(IntentHandler.ActionExtras.SERVER_ADDRESS.extra), 
 			Integer.parseInt(intent.getStringExtra(IntentHandler.ActionExtras.SERVER_PORT.extra)), 
@@ -143,7 +145,17 @@ public class NetworkCommunicationManager {
 		this.xmppOwnResource = intent.getStringExtra(IntentHandler.ActionExtras.XMPP_OWN_RESOURCE.extra);
 		this.xmppTargetJid = intent.getStringExtra(IntentHandler.ActionExtras.XMPP_TARGET_JID.extra);
 		this.preferredCommunicationMethod = CommunicationMethods.XMPP;
-		this.connect();
+		new Thread(new Runnable(){
+			public void run() {
+				try {
+					connect();
+					sendConnectionSuccess();
+				} catch (Exception e) {
+					Log.e(TAG, "Could not connect to xmpp server", e);
+					sendConnectionFailure();
+				}
+			}
+		}).start();
 	}
 	
 	/**
@@ -154,7 +166,7 @@ public class NetworkCommunicationManager {
 	 * @param message The message to be sent
 	 * @throws Exception If neither direct socket nor xmpp connections are setup
 	 */
-	public void sendMessage(String message) throws Exception {
+	public void sendNetworkMessage(String message) throws Exception {
 		if (xmppClient == null && directSocketClient == null) {
 			throw new Exception("Un-initialized communication clients; please initialize one");
 		} else if (xmppClient != null && (directSocketClient == null || preferredCommunicationMethod == CommunicationMethods.XMPP)){
@@ -162,6 +174,24 @@ public class NetworkCommunicationManager {
 		} else {
 			//TODO directSocketClient.sendMessage(message);
 		}
+	}
+	
+	private void sendConnectionFailure() {
+		Intent intent = new Intent(XmppConnectionActivity.NETWORK_CONNECTION_STATUS_UPDATE);
+		intent.putExtra(
+			XmppConnectionActivity.NETWORK_CONNECTION_STATUS, 
+			XmppConnectionActivity.NETWORK_STATUS_CONNECTION_FAILURE
+		);
+		owner.sendBroadcast(intent);
+	}
+	
+	private void sendConnectionSuccess() {
+		Intent intent = new Intent(XmppConnectionActivity.NETWORK_CONNECTION_STATUS_UPDATE);
+		intent.putExtra(
+			XmppConnectionActivity.NETWORK_CONNECTION_STATUS,
+			XmppConnectionActivity.NETWORK_STATUS_CONNECTED
+		);
+		owner.sendBroadcast(intent);
 	}
 	
 	//This method is only for testing
@@ -180,7 +210,7 @@ public class NetworkCommunicationManager {
 			)
 		);
 		try {
-			sendMessage(gson.toJson(envelope, Envelope.class));
+			sendNetworkMessage(gson.toJson(envelope, Envelope.class));
 		} catch (Exception e) {
 			Log.d(TAG, "Could not send message to controller");
 		}

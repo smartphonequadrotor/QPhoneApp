@@ -63,8 +63,13 @@
         android:layout_height="wrap_content"
         android:text="abhin-c@tomatohome.net" />
     <Button 
-        android:id="@+id/connectBtn"
+        android:id="@+id/netConnectBtn"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:text="@string/connect" />
+    <Button 
+        android:id="@+id/netNextBtn"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/next_btn_txt" />
 </LinearLayout>

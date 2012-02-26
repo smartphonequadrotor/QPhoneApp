@@ -14,17 +14,23 @@ import com.ventus.smartphonequadrotor.qphoneapp.util.net.XmppClient;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 /**
  * This activity lets the user setup all the connection parameters for a connection to the
@@ -34,15 +40,22 @@ import android.widget.EditText;
  */
 public class XmppConnectionActivity extends Activity {
 	public static final String TAG = XmppConnectionActivity.class.getName();
+	public static final String NETWORK_CONNECTION_STATUS_UPDATE = "com.ventus."
+			+ "smartphonequadrotor.qphoneapp.activities.XmppConnectionActivity." 
+			+ "NETWORK_CONNECTION_STATUS_UPDATE";
+	public static final String NETWORK_CONNECTION_STATUS = "NETWORK_CONNECTION_STATUS";
+	public static final int NETWORK_STATUS_CONNECTED = 1;
+	public static final int NETWORK_STATUS_DISCONNECTED = 0;
+	public static final int NETWORK_STATUS_CONNECTION_FAILURE = -1;
 	
+	private IntentFilter intentFilter;
 	private EditText serverAddress;
 	private EditText serverPortNum;
 	private EditText password;
 	private EditText ownJabberId;
 	private EditText targetJabberId;
 	private Button connectBtn;
-	
-	private Calendar calendar;
+	private Button nextBtn;
 	
 	/*************************************************************
 	 * Over-ridden methods from Activity	
@@ -54,20 +67,22 @@ public class XmppConnectionActivity extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
         setContentView(R.layout.xmpp_setup);
+        
+        initBroadcastReceiver();
         
         serverAddress = (EditText)findViewById(R.id.serverAddressTxt);
         serverPortNum = (EditText)findViewById(R.id.serverPortNumberTxt);
         password = (EditText)findViewById(R.id.passwordTxt);
         ownJabberId = (EditText)findViewById(R.id.ownJabberIdTxt);
         targetJabberId = (EditText)findViewById(R.id.targetJabberIdTxt);
-        connectBtn = (Button)findViewById(R.id.connectBtn);
-        
-		Intent mainServiceStarter = new Intent(XmppConnectionActivity.this, MainService.class);
-		startService(mainServiceStarter);
+        connectBtn = (Button)findViewById(R.id.netConnectBtn);
+        nextBtn = (Button)findViewById(R.id.netNextBtn);
         
         connectBtn.setOnClickListener(new ConnectBtn_OnClickListener());
-        calendar = Calendar.getInstance();
+        nextBtn.setOnClickListener(new NextBtn_OnClickListener());
+        nextBtn.setEnabled(false);
     }
 
 	@Override
@@ -82,7 +97,6 @@ public class XmppConnectionActivity extends Activity {
 		switch (item.getItemId()) {
 		case R.id.xmpp_menu_sendtestmsg:
 			Intent messageControllerIntent = new Intent(IntentHandler.MESSAGE_CONTROLLER_ACTION);
-			//messageControllerIntent.putExtra(IntentHandler.ActionExtras.MESSAGE_FOR_CONTROLLER.extra, "qphone time: " + Long.toString(calendar.getTimeInMillis()));
 			sendBroadcast(messageControllerIntent);
 			return true;
 		default:
@@ -103,10 +117,44 @@ public class XmppConnectionActivity extends Activity {
      */
     public class ConnectBtn_OnClickListener implements View.OnClickListener {
 		public void onClick(View v) {
+			setProgressBarIndeterminateVisibility(true);
 			Intent connectionIntent = createConnectionIntent();
 			sendBroadcast(connectionIntent);
 		}
     }
+    
+    /**
+     * This class is the listener for the next button on the {@link XmppConnectionActivity}.
+     * It starts up the "ready-to-fly" activity.
+     * @author abhin
+     *
+     */
+    public class NextBtn_OnClickListener implements View.OnClickListener {
+    	public void onClick(View v) {
+    		
+    		Intent intent = new Intent(XmppConnectionActivity.this, ReadyToFlyActivity.class);
+    		startActivity(intent);
+    	}
+    }
+    
+    private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			String action = intent.getAction();
+			if (action.equals(NETWORK_CONNECTION_STATUS_UPDATE)) {
+				int connected = intent.getIntExtra(NETWORK_CONNECTION_STATUS, NETWORK_STATUS_DISCONNECTED);
+				if (connected == NETWORK_STATUS_CONNECTED) {
+					nextBtn.setEnabled(true);
+					Toast.makeText(XmppConnectionActivity.this, R.string.net_device_connected, Toast.LENGTH_SHORT).show();
+				} else if (connected == NETWORK_STATUS_DISCONNECTED) {
+					Toast.makeText(XmppConnectionActivity.this, R.string.net_device_disconnected, Toast.LENGTH_SHORT).show();					
+				} else if (connected == NETWORK_STATUS_CONNECTION_FAILURE) {
+					Toast.makeText(XmppConnectionActivity.this, R.string.net_device_connection_failure, Toast.LENGTH_SHORT).show();					
+				}
+				setProgressBarIndeterminateVisibility(false);
+			}
+		}
+    };
 
     /****************************************************************
      * Helper methods
@@ -125,4 +173,13 @@ public class XmppConnectionActivity extends Activity {
 		intent.putExtra(IntentHandler.ActionExtras.XMPP_OWN_RESOURCE.extra, "TODO");
 		return intent;
 	}
+	    
+    /**
+     * This activity needs a broadcast receiver to updates from the {@link NetworkCommunicationManager}.
+     */
+    private void initBroadcastReceiver() {
+    	intentFilter = new IntentFilter();
+    	intentFilter.addAction(XmppConnectionActivity.NETWORK_CONNECTION_STATUS_UPDATE);
+    	registerReceiver(broadcastReceiver, intentFilter);
+    }
 }

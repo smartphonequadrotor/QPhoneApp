@@ -17,7 +17,7 @@ public class Envelope {
 		this.Responses = responses;
 	}
 	
-	public Commands Command() {
+	public Commands getCommands() {
 		return Commands;
 	}
 

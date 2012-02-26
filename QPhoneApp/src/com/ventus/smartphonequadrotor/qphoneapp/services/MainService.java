@@ -1,9 +1,14 @@
 package com.ventus.smartphonequadrotor.qphoneapp.services;
 
+import java.io.IOException;
+
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
+import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.BluetoothManager;
+import com.ventus.smartphonequadrotor.qphoneapp.util.control.DataAggregator;
 import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager;
 
 import android.app.Service;
+import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.IBinder;
@@ -20,12 +25,16 @@ public class MainService extends Service {
 	public static final String TAG = MainService.class.getName();
 	private IntentHandler intentHandler;
 	private NetworkCommunicationManager networkCommunicationManager;
+	private BluetoothManager bluetoothManager;
+	private DataAggregator dataAggregator;
 
 	@Override
 	public void onCreate() {
 		super.onCreate();
-		networkCommunicationManager = new NetworkCommunicationManager();
-		this.intentHandler = new IntentHandler(this);
+		networkCommunicationManager = new NetworkCommunicationManager(this);
+		bluetoothManager = new BluetoothManager(this);
+		intentHandler = new IntentHandler(this);
+		dataAggregator = new DataAggregator(this);
 	}
 	
 	@Override
@@ -36,6 +45,14 @@ public class MainService extends Service {
 
 	public NetworkCommunicationManager getNetworkCommunicationManager() {
 		return this.networkCommunicationManager;
+	}
+	
+	public BluetoothManager getBluetoothManager() {
+		return this.bluetoothManager;
+	}
+	
+	public DataAggregator getDataAggregator() {
+		return this.dataAggregator;
 	}
 
 	/**
@@ -52,6 +69,7 @@ public class MainService extends Service {
 		IntentFilter intentFilter = new IntentFilter();
 		intentFilter.addAction(IntentHandler.MESSAGE_CONTROLLER_ACTION);
 		intentFilter.addAction(IntentHandler.XMPP_CONNECT_ACTION);
+		intentFilter.addAction(IntentHandler.BLUETOOTH_CONNECT_ACTION);
 		registerReceiver(intentHandler, intentFilter);
 	}
 	
@@ -60,9 +78,9 @@ public class MainService extends Service {
 	 * controller (using either xmpp or direct connections).
 	 * @param message
 	 */
-	public void sendMessage(String message) {
+	public void sendNetworkMessage(String message) {
 		try {
-			this.networkCommunicationManager.sendMessage(message);
+			this.networkCommunicationManager.sendNetworkMessage(message);
 		} catch (Exception e) {
 			Log.e(TAG, "Message Could not be sent: " + e.getMessage());
 			Toast.makeText(this, "Message could not be sent", Toast.LENGTH_SHORT).show();
@@ -70,15 +88,15 @@ public class MainService extends Service {
 	}
 	
 	/**
-	 * Uses the network connection manager to setup connection.
-	 * @param intent
+	 * This uses the {@link BluetoothManager} to send a message to the QCB
+	 * over bluetooth.
+	 * @param message
 	 */
-	public void setupXmppConnection(Intent intent) {
+	public void sendBluetoothMessage(String message) {
 		try {
-			this.networkCommunicationManager.setupXmppConnection(intent, this);
-		} catch (Exception e) {
-			Log.e(TAG, "Xmpp connection could not be established: " + e.getMessage());
-			Toast.makeText(this, "Xmpp connection failed", Toast.LENGTH_SHORT).show();
+			this.bluetoothManager.write(message.getBytes());
+		} catch (IOException ioEx) {
+			Log.e(TAG, "Could not send message", ioEx);
 		}
 	}
 }
