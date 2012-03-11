@@ -12,7 +12,7 @@ import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationMan
  * This is the class that gets all the data from the controller and the
  * QCB and aggregates it so that it could be used by the control systems.
  * @author abhin
- *
+ * @deprecated replaced by a more generic {@link CmacInput} class.
  */
 public class DataAggregator {
 	public static final String TAG = DataAggregator.class.getName();
