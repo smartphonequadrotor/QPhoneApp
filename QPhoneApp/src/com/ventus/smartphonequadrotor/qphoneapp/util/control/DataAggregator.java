@@ -5,6 +5,8 @@ import java.io.IOException;
 import android.util.Log;
 
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
+import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpHandlers;
+import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpParser;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
 import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager;
 
@@ -16,12 +18,14 @@ import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationMan
  */
 public class DataAggregator {
 	public static final String TAG = DataAggregator.class.getName();
+	public static final int MAX_QCFP_PACKET_SIZE = 32;
 	
 	private MainService owner;
-	private byte[] buffer = new byte[1024];
+	private QcfpHandlers packetHandlers;
 	
 	public DataAggregator(MainService owner) {
 		this.owner = owner;
+		this.packetHandlers = new QcfpHandlers();
 	}
 	
 	/**
@@ -52,10 +56,16 @@ public class DataAggregator {
 	Thread bluetoothReader = new Thread() {
 		@Override
 		public void run() {
+			byte[] buffer = new byte[2*MAX_QCFP_PACKET_SIZE];
+			QcfpParser bluetoothDataParser = new QcfpParser(MAX_QCFP_PACKET_SIZE, packetHandlers);
+			
 			while (true) {
 				try {
 					int length = owner.getBluetoothManager().getInputStream().read(buffer);
-					Log.d(TAG, new String(buffer).substring(0, length));
+					if(length > 0) {
+						// Decodes data and dispatches packet handler if a full packet is received
+						bluetoothDataParser.addData(buffer, length);
+					}
 				} catch (IOException e) {
 					Log.e(TAG, "Could not read from QCB", e);
 				}
