@@ -18,7 +18,6 @@ import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationMan
  */
 public class DataAggregator {
 	public static final String TAG = DataAggregator.class.getName();
-	public static final int MAX_QCFP_PACKET_SIZE = 32;
 	
 	private MainService owner;
 	private QcfpHandlers packetHandlers;
@@ -56,8 +55,8 @@ public class DataAggregator {
 	Thread bluetoothReader = new Thread() {
 		@Override
 		public void run() {
-			byte[] buffer = new byte[2*MAX_QCFP_PACKET_SIZE];
-			QcfpParser bluetoothDataParser = new QcfpParser(MAX_QCFP_PACKET_SIZE, packetHandlers);
+			byte[] buffer = new byte[2*QcfpParser.MAX_QCFP_PACKET_SIZE];
+			QcfpParser bluetoothDataParser = new QcfpParser(QcfpParser.MAX_QCFP_PACKET_SIZE, packetHandlers);
 			
 			while (true) {
 				try {

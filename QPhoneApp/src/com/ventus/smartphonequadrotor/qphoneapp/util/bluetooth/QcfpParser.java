@@ -9,6 +9,7 @@ public class QcfpParser {
 		COBS_SYNC,
 	}
 	
+	public static final int MAX_QCFP_PACKET_SIZE = 32;
 	private static int COBS_TERM_BYTE = 0;
 	
 	private int maxPacketSize;
@@ -55,7 +56,7 @@ public class QcfpParser {
 			case COBS_DECODE:
 				if(buffer[i] == COBS_TERM_BYTE)
 				{
-					if(packet_size > 0)
+					if((packet_size > 0) && (byte_count == 0))
 					{
 						// Handle packet
 						this.packetHandlers.dispatch(this.incoming_packet, this.packet_size);
@@ -70,29 +71,29 @@ public class QcfpParser {
 				}
 				break;
 			case COBS_COPY:
-				if(buffer[i] == COBS_TERM_BYTE)
+				if(byte_count == 1)
 				{
-					// Got a zero when expecting data, re-sync
-					byte_count = 0;
-					packet_size = 0;
+					incoming_packet[packet_size++] = 0;
+					i--; // i points to the next data chunk byte currently, which is what the decode state needs
+					byte_count--;
 					decode_state = cobsState.COBS_DECODE;
 				}
 				else
 				{
-					if(byte_count > 1)
+					if(buffer[i] == COBS_TERM_BYTE)
 					{
-						incoming_packet[packet_size++] = buffer[i];
-						byte_count--;
-					}
-					else // byte_count == 1
-					{
-						incoming_packet[packet_size++] = buffer[i];
-						byte_count--;
-						// We add two bytes to the packet here which could result in the packet
-						// being larger than the max size which is why the packet has a couple of
-						// extra bytes in it
-						incoming_packet[packet_size++] = 0;
+						// Got a zero when expecting data, re-sync
+						byte_count = 0;
+						packet_size = 0;
 						decode_state = cobsState.COBS_DECODE;
+					}
+					else
+					{
+						if(byte_count > 1)
+						{
+							incoming_packet[packet_size++] = buffer[i];
+							byte_count--;
+						}
 					}
 				}
 				break;
