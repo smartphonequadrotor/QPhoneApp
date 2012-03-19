@@ -35,9 +35,7 @@ public class DataAggregator {
 	 * @param envelope
 	 */
 	public void processControllerMessage(Envelope envelope) {
-		if (envelope.getCommands().getMoveCommandArray().length != 0) {
-			owner.sendBluetoothMessage("g");
-		}
+		// TODO: Add code for handling controller messages.
 	}
 	
 	/**
@@ -55,8 +53,8 @@ public class DataAggregator {
 	Thread bluetoothReader = new Thread() {
 		@Override
 		public void run() {
-			byte[] buffer = new byte[2*QcfpParser.MAX_QCFP_PACKET_SIZE];
-			QcfpParser bluetoothDataParser = new QcfpParser(QcfpParser.MAX_QCFP_PACKET_SIZE, packetHandlers);
+			byte[] buffer = new byte[2*QcfpParser.QCFP_MAX_PACKET_SIZE];
+			QcfpParser bluetoothDataParser = new QcfpParser(QcfpParser.QCFP_MAX_PACKET_SIZE, packetHandlers);
 			
 			while (true) {
 				try {

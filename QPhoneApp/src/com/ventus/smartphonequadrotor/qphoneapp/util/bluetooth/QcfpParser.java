@@ -9,8 +9,8 @@ public class QcfpParser {
 		COBS_SYNC,
 	}
 	
-	public static final int MAX_QCFP_PACKET_SIZE = 32;
-	private static int COBS_TERM_BYTE = 0;
+	public static final int QCFP_MAX_PACKET_SIZE = 32;
+	public static int COBS_TERM_BYTE = 0;
 	
 	private int maxPacketSize;
 	private cobsState decode_state;
@@ -35,16 +35,16 @@ public class QcfpParser {
 	}
 	
 	/**
-	 * Adds the data in buffer of length to any previously processed data. 
+	 * Adds the data in buffer of length to any previously processed data.
+	 * This method is equivalent in function to the function qcfp_data_received
+	 * in the firmware.
 	 * @param buffer Data to be processed.
 	 * @param length Number of bytes to process.
 	 */
 	public void addData(byte[] buffer, int length) {
 
-		int i;
-
 		// Decode data from buffer
-		for(i = 0; i < length; i++)
+		for(int i = 0; i < length; i++)
 		{
 			if(packet_size > this.maxPacketSize)
 			{
