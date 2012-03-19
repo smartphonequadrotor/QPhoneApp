@@ -9,12 +9,12 @@
 			<attribute name="javadoc_location" value="file:/C:/Users/Abhin/Documents/smack_3_2_1/javadoc/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="lib/gson-2.1.jar" sourcepath="C:/Users/Abhin/workspace/QPhoneApp/QPhoneApp/lib/gson-2.1-sources.jar">
+	<classpathentry exported="true" kind="lib" path="lib/gson-2.1.jar" sourcepath="C:/Users/Abhin/workspace/QPhoneApp/QPhoneApp/lib/gson-2.1-sources.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:platform:/resource/QPhoneApp/lib/gson-2.1-javadoc.jar!/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="lib/ejml-0.18-nogui.jar">
+	<classpathentry exported="true" kind="lib" path="lib/ejml-0.18-nogui.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="jar:platform:/resource/QPhoneApp/lib/ejml-0.18-doc.zip!/ejml-0.18-doc"/>
 		</attributes>

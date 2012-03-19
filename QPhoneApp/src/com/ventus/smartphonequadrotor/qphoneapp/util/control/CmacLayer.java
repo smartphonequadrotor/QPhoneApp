@@ -2,6 +2,10 @@ package com.ventus.smartphonequadrotor.qphoneapp.util.control;
 
 import java.util.HashMap;
 
+import android.util.Log;
+
+import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
+
 
 /**
  * This class contains two CMAC weight sets that will store the control weights and the
@@ -35,6 +39,7 @@ import java.util.HashMap;
  *
  */
 public class CmacLayer {
+	public static final String TAG = CmacLayer.class.getSimpleName();
 	public static final int DEFAULT_QUANTIZATION_NUMBER = 100;
 	private HashMap<SimpleMatrix, SimpleMatrix> controlWeights, alternateWeights;
 	private SimpleMatrix offset;					//the inputs will be added by this before evaluation
@@ -51,6 +56,15 @@ public class CmacLayer {
 		this.offset = offset;
 		//pre-compute the state intervals
 		stateInterval = upperBound.minus(lowerBound).divide(quantizationNumber);
+		
+		//if the offsets are greater than the state interval, then throw an exception
+		for (int i = 0; i < stateInterval.getNumElements(); i++) {
+			if (offset.get(i) > stateInterval.get(i)) {
+				throw new IllegalArgumentException("Offset cannot be greater than state interval");
+			}
+		}
+		
+		//init the hash maps
 		controlWeights = new HashMap<SimpleMatrix, SimpleMatrix>();
 		alternateWeights = new HashMap<SimpleMatrix, SimpleMatrix>();
 	}
@@ -74,16 +88,7 @@ public class CmacLayer {
 		SimpleMatrix roundedOffsettedInput = roundAndOffsetInput(input);
 		
 		//get the normalized position matrix for the activation function
-		SimpleMatrix normalizedPos = input.plus(offset).minus(roundedOffsettedInput).elementwiseDivision(stateInterval);
-		//calculate the activation function using the spline polinomial f(x) = x^2 + 2*x^3 + x^4
-		double activationFunction = 1;	//this is the product of the activation functions
-										//of each of the dimensions in the state vector
-		for (int i = 0; i < normalizedPos.getNumElements(); i++)
-			activationFunction *= (
-				Math.pow(normalizedPos.get(i), 2) 
-				- 2*Math.pow(normalizedPos.get(i), 3) 
-				+ Math.pow(normalizedPos.get(i), 4)
-			);
+		double activationFunction = calculateActivationFunction(input, roundedOffsettedInput);
 		
 		//query the layer and compute the return values
 		SimpleMatrix control, alternate;
@@ -100,16 +105,66 @@ public class CmacLayer {
 	}
 	
 	/**
+	 * This method calculates the position of the input in the state space cell. Then it uses a 
+	 * spline polynomial f(x) = x^2 + 2*x^3 + x^4 to compute the activation function of the input
+	 * in each of the dimensions of the state space. It then returns the product of those activation
+	 * functions. 
+	 * This works because the product of the activation function in each of the dimensions is
+	 * the activation function of the point in the state space (in all the dimensions combined).
+	 * 
+	 * @param input
+	 * @param roundedOffsettedInput
+	 * @return
+	 */
+	public double calculateActivationFunction(SimpleMatrix input, SimpleMatrix roundedOffsettedInput) {
+		double activationFunction = 1;	//this is the product of the activation functions
+										//of each of the dimensions in the state vector
+		
+		if (roundedOffsettedInput == null)
+			roundedOffsettedInput = roundAndOffsetInput(input);
+
+		SimpleMatrix halfStateInterval = stateInterval.divide(2);
+		SimpleMatrix normalizedPos = SimpleMatrix.ones(input.numRows(), input.numCols());
+		normalizedPos = normalizedPos.minus(
+			input.minus(offset).minus(roundedOffsettedInput).minus(halfStateInterval).elementWiseAbs().elementwiseDivision(halfStateInterval)
+		);
+		//calculate the activation function using the spline polynomial f(x) = x^2 + 2*x^3 + x^4
+		for (int i = 0; i < normalizedPos.getNumElements(); i++) {
+			activationFunction *= (
+				Math.pow(normalizedPos.get(i), 2) 
+				- 2*Math.pow(normalizedPos.get(i), 3) 
+				+ Math.pow(normalizedPos.get(i), 4)
+			);
+		}
+		
+		return activationFunction;
+	}
+	
+	/**
 	 * This matrix adds the given matrices to the given index (input) of the CMAC.
 	 * This method is used to update the control and alternate weights of the CMAC. 
+	 * The given matrices are first weighted using the timeInterval provided.
 	 * @param input
 	 * @param deltaControlWeights
 	 * @param deltaAlternateWeights
+	 * @param timeInterval The time (milliseconds) that have passed since the last update
 	 */
-	public void applyDeltas(SimpleMatrix input, SimpleMatrix deltaControlWeights, SimpleMatrix deltaAlternateWeights) {
-		if (input.numCols() != CmacInputParam.values().length)
+	public void applyDeltas(SimpleMatrix input, SimpleMatrix deltaControlWeights, SimpleMatrix deltaAlternateWeights, long timeInterval) {
+		if (input.numCols() != CmacInputParam.values().length || input.numRows() != 1)
 			throw new IllegalArgumentException("Size of the input matrix is illegal");
+		if (deltaControlWeights.numCols() != CmacOutput.NUMBER_OF_WEIGHTS || deltaControlWeights.numRows() != 1)
+			throw new IllegalArgumentException("Size of the delta control weights is illegal");
+		if (deltaAlternateWeights.numCols() != CmacOutput.NUMBER_OF_WEIGHTS || deltaAlternateWeights.numRows() != 1)
+			throw new IllegalArgumentException("Size of the alternate control weights is illegal");
 		
+		//scale the deltas according to the timeInterval
+		Log.d(TAG, "delta control weights before scaling: " + deltaControlWeights.toString());
+		deltaControlWeights = deltaControlWeights.mult(timeInterval/1000.0);
+		Log.d(TAG, "delta control weights after scaling: " + deltaControlWeights.toString());
+		deltaAlternateWeights = deltaAlternateWeights.mult(timeInterval/1000.0);
+		Log.d(TAG, "Time interval: " + Long.toString(timeInterval));
+		
+		//update the weights
 		SimpleMatrix correctedInput = roundAndOffsetInput(input);
 		if (controlWeights.containsKey(correctedInput)) {
 			controlWeights.put(correctedInput, controlWeights.get(correctedInput).plus(deltaControlWeights));
@@ -127,7 +182,7 @@ public class CmacLayer {
 		//first round the input DOWN using the quantizationNumber, 
 		//lower bound and upper bound. The rounded version of the input
 		//will be used for looking up in the hash map
-		SimpleMatrix roundedOffsettedInput = input.plus(offset).minus(lowerBound);
+		SimpleMatrix roundedOffsettedInput = input.minus(offset).minus(lowerBound);
 		//do a term-wise division and round of the matrix with stateInterval
 		for (int i = 0; i < input.getNumElements(); i++) {
 			roundedOffsettedInput.set(
@@ -136,6 +191,14 @@ public class CmacLayer {
 			);
 		}
 		roundedOffsettedInput = roundedOffsettedInput.elementMult(stateInterval).plus(lowerBound);
-		return roundedOffsettedInput;
+		return roundedOffsettedInput.round();
+	}
+	
+	public HashMap<SimpleMatrix, SimpleMatrix> getRawControlWeights () {
+		return this.controlWeights;
+	}
+	
+	public HashMap<SimpleMatrix, SimpleMatrix> getRawAlternateWeights () {
+		return this.alternateWeights;
 	}
 }

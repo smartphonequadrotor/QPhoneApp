@@ -1,5 +1,9 @@
 package com.ventus.smartphonequadrotor.qphoneapp.util.control;
 
+import android.provider.Settings.System;
+
+import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
+
 
 /**
  * Various parameters related to the CmacInput vector like the various default
@@ -12,7 +16,7 @@ public enum CmacInputParam {
 	 * current height - desired height
 	 * The bounds are defined in meters.
 	 */
-	HEIGHT_ERROR(0, 0, 50),
+	HEIGHT_ERROR(0, -50, 50),
 	
 	/**
 	 * current roll - desired roll
@@ -89,6 +93,7 @@ public enum CmacInputParam {
 	
 	public int index;
 	public double minBound, maxBound;
+	public static int count = values().length;
 	
 	CmacInputParam(int index, double minBound, double maxBound) {
 		this.index = index;
@@ -98,8 +103,8 @@ public enum CmacInputParam {
 	
 	public static SimpleMatrix getDefaultMinBound() {
 		SimpleMatrix minBound = new SimpleMatrix(1, values().length);
-		for (int i = 0; i < CmacInputParam.values().length; i++) {
-			minBound.set(1, i, values()[i].minBound);
+		for (int i = 0; i < values().length; i++) {
+			minBound.set(i, values()[i].minBound);
 		}
 		return minBound;
 	}
@@ -107,7 +112,7 @@ public enum CmacInputParam {
 	public static SimpleMatrix getDefaultMaxBound() {
 		SimpleMatrix maxBound = new SimpleMatrix(1, values().length);
 		for (int i = 0; i < CmacInputParam.values().length; i++) {
-			maxBound.set(1, i, values()[i].maxBound);
+			maxBound.set(i, values()[i].maxBound);
 		}
 		return maxBound;
 	}

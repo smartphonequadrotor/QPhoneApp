@@ -1,5 +1,9 @@
 package com.ventus.smartphonequadrotor.qphoneapp.util.control;
 
+import java.util.Date;
+
+import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
+
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
@@ -13,7 +17,7 @@ import android.util.Log;
  */
 public class ControlLoop extends Thread {
 	public static final String TAG = ControlLoop.class.getName();
-	public static final int NUMBER_OF_CMAC_LAYERS = 5;
+	public static final int NUMBER_OF_CMAC_LAYERS = 3;
 	public static final int QUANTIZATION_NUMBER = 100;
 	public static final float alternateWeightsLearningGain = 1000;		//Kappa in equation 14 of main-paper
 	public static final float learningErrorGain = 0.001f;				//alpha in equations 14 and 15 of main-paper
@@ -24,10 +28,24 @@ public class ControlLoop extends Thread {
 	public static final float guideWeightsGainDeadzone = 0.00001f;		//eta-2 in equation 14 of main-paper
 	public static final float deadZone = 10;							//lower-case delta in equations 14 and 15 of main-paper
 	public static final double currentStateErrorGain = 4;				//defined after equation 3 as upper-case lambda in main-paper
+	//the following matrix is used to convert the cmac output to motor speeds
+	private static final SimpleMatrix cmacOutput2MotorSpeedMatrix = new SimpleMatrix(
+		CmacOutput.NUMBER_OF_WEIGHTS,
+		CmacOutput.NUMBER_OF_WEIGHTS,
+		true,
+		new double[] {
+			0.25,	0,		-0.5,	0.25,
+			0.25,	-0.5, 	0, 		-0.25,
+			0.25,	0,		0.5,	0.25,
+			0.25,	0.5,	0,		-0.25
+		}
+	);
 	
 	private Handler controlSignalHandler;	//the handler that will accept the output
 											//from this control loop
 	private CmacLayer[] cmacLayers;
+	
+	private long lastUpdateTimestamp = -1;
 	
 	/**
 	 * Constructor
@@ -74,11 +92,15 @@ public class ControlLoop extends Thread {
 	 * Then this output is used to computer the correction for the CMacLayers
 	 * and that correction is applied. In addition, that output found in the 
 	 * various CmacLayers is aggregated and returned. This output can then be 
-	 * used to change the motor speed by sending it over bluetooth.
-	 * @param input
-	 * @return
+	 * used to change the motor speed after further processing by sending it
+	 * over bluetooth to the QCB.
+	 * 
+	 * Note: The output is only composed of the control weights because that is 
+	 * all that is needed to update the motor speeds.
+	 * @param input 1-by-13 matrix
+	 * @return 1-by-{@value CmacOutput#NUMBER_OF_WEIGHTS} matrix
 	 */
-	public CmacOutput triggerCmacUpdate(SimpleMatrix input) {
+	public SimpleMatrix triggerCmacUpdate(SimpleMatrix input) {
 		SimpleMatrix controlWeights = new SimpleMatrix(NUMBER_OF_CMAC_LAYERS, CmacOutput.NUMBER_OF_WEIGHTS);
 		SimpleMatrix alternateWeights = new SimpleMatrix(NUMBER_OF_CMAC_LAYERS, CmacOutput.NUMBER_OF_WEIGHTS);
 		SimpleMatrix activationFunctions = new SimpleMatrix(1, NUMBER_OF_CMAC_LAYERS);
@@ -89,7 +111,12 @@ public class ControlLoop extends Thread {
 			alternateWeights.insertIntoThis(i, 0, output.getAlternateWeights());
 			activationFunctions.set(i, output.getActivationFunction());
 		}
-		SimpleMatrix normalizedActivationFunctions = activationFunctions.divide(activationFunctions.elementSum());
+		double activationFunctionSum = activationFunctions.elementSum();
+		SimpleMatrix normalizedActivationFunctions;
+		if (activationFunctionSum != 0)
+			normalizedActivationFunctions = activationFunctions.divide(activationFunctions.elementSum());
+		else
+			normalizedActivationFunctions = activationFunctions;
 		
 		//get the weight difference that will later be used to computer the weight corrections
 		//(refer to equation 13 in main-paper)
@@ -98,7 +125,7 @@ public class ControlLoop extends Thread {
 		SimpleMatrix weightDiff = aggregatedControlWeights.minus(aggregatedAlternateWeights);
 		
 		//get column-wise means of the alternate weights (refer to equation 14 in main-paper)
-		SimpleMatrix meanAlternateWeights = SimpleMatrix.ones(NUMBER_OF_CMAC_LAYERS)
+		SimpleMatrix meanAlternateWeights = SimpleMatrix.ones(1, NUMBER_OF_CMAC_LAYERS)
 														.mult(alternateWeights)
 														.divide(NUMBER_OF_CMAC_LAYERS);
 		
@@ -114,7 +141,7 @@ public class ControlLoop extends Thread {
 								);
 		deltaControlWeights = 	normalizedActivationFunctions.transpose().mult(
 									CmacInputParam.getStateErrors(input, currentStateErrorGain)
-								);
+								).mult(-1.0);	//TODO talk to Macnab whether this is allright.
 		SimpleMatrix lyapunovBoundednessTerm = 	normalizedActivationFunctions	//helps guaranteed bounded signals
 												.transpose()
 												.mult(weightDiff)
@@ -132,15 +159,40 @@ public class ControlLoop extends Thread {
 		}
 		deltaAlternateWeights = deltaAlternateWeights.mult(alternateWeightsLearningGain);
 		deltaControlWeights = deltaControlWeights.mult(controlWeightsLearningGain);
-		
+
+		long timeInterval = 0;
+		long currentTimestamp = (new Date()).getTime();
+		if (lastUpdateTimestamp != -1) {
+			timeInterval = currentTimestamp - lastUpdateTimestamp;
+		}
+		lastUpdateTimestamp = currentTimestamp;
 		for (int i = 0; i < NUMBER_OF_CMAC_LAYERS; i++) {
 			cmacLayers[i].applyDeltas(
 				input,
 				deltaControlWeights.extractMatrix(i, i+1, 0, deltaControlWeights.numCols()),
-				deltaAlternateWeights.extractMatrix(i, i+1, 0, deltaAlternateWeights.numCols())
+				deltaAlternateWeights.extractMatrix(i, i+1, 0, deltaAlternateWeights.numCols()),
+				timeInterval
 			);
 		}
 		
-		return new CmacOutput(aggregatedControlWeights , aggregatedAlternateWeights ,0);
+		return aggregatedControlWeights;
+	}
+	
+	/**
+	 * The output from the Cmac Layers cannot be directly used to update the motor speeds.
+	 * Equation A.3 from the main-paper needs to be used to convert these control weights
+	 * to desired motor speeds.
+	 * @param cmacOutput 1-by-{@value CmacOutput#NUMBER_OF_WEIGHTS} matrix
+	 * @return 1-by-{@value CmacOutput#NUMBER_OF_WEIGHTS} matrix
+	 */
+	public SimpleMatrix cmacOutput2MotorSpeeds(SimpleMatrix cmacOutput) {
+		SimpleMatrix motorSpeeds = cmacOutput2MotorSpeedMatrix.mult(cmacOutput.transpose()).transpose();
+		//motorSpeeds is also a 1-by-{@value CmacOutput#NUMBER_OF_WEIGHTS} matrix
+		//for each item in the motorSpeeds matrix, its square root needs to be taken
+		for (int i = 0; i < motorSpeeds.getNumElements(); i++) {
+			double motorSpeed = motorSpeeds.get(i);
+			motorSpeeds.set(i, Math.sqrt(motorSpeed));
+		}
+		return motorSpeeds;
 	}
 }
