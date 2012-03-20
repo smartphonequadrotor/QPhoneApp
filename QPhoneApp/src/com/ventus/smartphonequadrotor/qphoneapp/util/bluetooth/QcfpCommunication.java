@@ -28,8 +28,8 @@ public class QcfpCommunication {
 		byte byte_count = 1;
 		int encoded_data_index = 1, chunk_index = 1;
 
-		// First byte is always 0
-		encoded_data[0] = 0;
+		// First byte is always COBS_TERM_BYTE
+		encoded_data[0] = QcfpParser.COBS_TERM_BYTE;
 
 		for(int i = 0; i < length; i++, byte_count++)
 		{
@@ -51,7 +51,12 @@ public class QcfpCommunication {
 			encoded_data_index++;
 		}
 		
-		encoded_data[++encoded_data_index] = 0;
+		if(buffer[length-1] == QcfpParser.COBS_TERM_BYTE)
+		{
+			encoded_data[encoded_data_index++] = 1;
+		}
+		
+		encoded_data[++encoded_data_index] = QcfpParser.COBS_TERM_BYTE;
 		
 		byte[] return_array = new byte[encoded_data_index];
 		System.arraycopy(encoded_data, 0, return_array, 0, encoded_data_index);

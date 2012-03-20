@@ -10,7 +10,7 @@ public class QcfpParser {
 	}
 	
 	public static final int QCFP_MAX_PACKET_SIZE = 32;
-	public static int COBS_TERM_BYTE = 0;
+	public static byte COBS_TERM_BYTE = 0;
 	
 	private int maxPacketSize;
 	private cobsState decode_state;
@@ -46,64 +46,68 @@ public class QcfpParser {
 		// Decode data from buffer
 		for(int i = 0; i < length; i++)
 		{
-			if(packet_size > this.maxPacketSize)
+			if(this.packet_size > this.maxPacketSize)
 			{
-				decode_state = cobsState.COBS_SYNC;
+				this.decode_state = cobsState.COBS_SYNC;
 			}
 
-			switch(decode_state)
+			switch(this.decode_state)
 			{
 			case COBS_DECODE:
 				if(buffer[i] == COBS_TERM_BYTE)
 				{
-					if((packet_size > 0) && (byte_count == 0))
+					if((this.packet_size > 0) && (this.byte_count == 0))
 					{
 						// Handle packet
+						if(this.incoming_packet[this.packet_size] == COBS_TERM_BYTE)
+						{
+							this.packet_size--;
+						}
 						this.packetHandlers.dispatch(this.incoming_packet, this.packet_size);
 					}
-					packet_size = 0;
-					byte_count = 0;
+					this.packet_size = 0;
+					this.byte_count = 0;
 				}
 				else
 				{
-					byte_count = buffer[i];
-					decode_state = cobsState.COBS_COPY;
+					this.byte_count = buffer[i];
+					this.decode_state = cobsState.COBS_COPY;
 				}
 				break;
 			case COBS_COPY:
-				if(byte_count == 1)
+				if(this.byte_count == 1)
 				{
-					incoming_packet[packet_size++] = 0;
+					this.incoming_packet[this.packet_size++] = 0;
 					i--; // i points to the next data chunk byte currently, which is what the decode state needs
-					byte_count--;
-					decode_state = cobsState.COBS_DECODE;
+					this.byte_count--;
+					this.decode_state = cobsState.COBS_DECODE;
 				}
 				else
 				{
 					if(buffer[i] == COBS_TERM_BYTE)
 					{
 						// Got a zero when expecting data, re-sync
-						byte_count = 0;
-						packet_size = 0;
-						decode_state = cobsState.COBS_DECODE;
+						this.byte_count = 0;
+						this.packet_size = 0;
+						this.decode_state = cobsState.COBS_DECODE;
 					}
 					else
 					{
 						if(byte_count > 1)
 						{
-							incoming_packet[packet_size++] = buffer[i];
-							byte_count--;
+							this.incoming_packet[this.packet_size++] = buffer[i];
+							this.byte_count--;
 						}
 					}
 				}
 				break;
 			case COBS_SYNC:
 			default:
-				packet_size = 0;
-				byte_count = 0;
+				this.packet_size = 0;
+				this.byte_count = 0;
 				if(buffer[i] == COBS_TERM_BYTE)
 				{
-					decode_state = cobsState.COBS_DECODE;
+					this.decode_state = cobsState.COBS_DECODE;
 				}
 				break;
 			}

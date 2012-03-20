@@ -67,10 +67,10 @@ public class QcfpParserTest extends TestCase {
 		h.registerHandler(0, new QcfpCallback(){
 			public void run(byte[] packet, int length)
 			{
-				assertEquals(4, length);
+				assertEquals(3, length);
 				byte[] actual = new byte[length];
 				System.arraycopy(packet, 0, actual, 0, length);
-				Assert.assertArrayEquals(new byte[]{0, 0, 5, 0}, actual);
+				Assert.assertArrayEquals(new byte[]{0, 0, 5}, actual);
 				handler0Run = true;
 			}
 		});
@@ -78,10 +78,10 @@ public class QcfpParserTest extends TestCase {
 		h.registerHandler(1, new QcfpCallback(){
 			public void run(byte[] packet, int length)
 			{
-				assertEquals(4, length);
+				assertEquals(3, length);
 				byte[] actual = new byte[length];
 				System.arraycopy(packet, 0, actual, 0, length);
-				Assert.assertArrayEquals(new byte[]{1, 2, 3, 0}, actual);
+				Assert.assertArrayEquals(new byte[]{1, 2, 3}, actual);
 				handler1Run = true;
 			}
 		});
@@ -89,10 +89,10 @@ public class QcfpParserTest extends TestCase {
 		h.registerHandler(2, new QcfpCallback(){
 			public void run(byte[] packet, int length)
 			{
-				assertEquals(3, length);
+				assertEquals(2, length);
 				byte[] actual = new byte[length];
 				System.arraycopy(packet, 0, actual, 0, length);
-				Assert.assertArrayEquals(new byte[]{2, 3, 0}, actual);
+				Assert.assertArrayEquals(new byte[]{2, 3}, actual);
 				handler2Run = true;
 			}
 		});
@@ -100,10 +100,10 @@ public class QcfpParserTest extends TestCase {
 		h.registerHandler(3, new QcfpCallback(){
 			public void run(byte[] packet, int length)
 			{
-				assertEquals(3, length);
+				assertEquals(2, length);
 				byte[] actual = new byte[length];
 				System.arraycopy(packet, 0, actual, 0, length);
-				Assert.assertArrayEquals(new byte[]{3, 0, 0}, actual);
+				Assert.assertArrayEquals(new byte[]{3, 0}, actual);
 				handler3Run = true;
 			}
 		});
@@ -111,10 +111,10 @@ public class QcfpParserTest extends TestCase {
 		h.registerHandler(4, new QcfpCallback(){
 			public void run(byte[] packet, int length)
 			{
-				assertEquals(5, length);
+				assertEquals(4, length);
 				byte[] actual = new byte[length];
 				System.arraycopy(packet, 0, actual, 0, length);
-				Assert.assertArrayEquals(new byte[]{4, 1, 2, 3, 0}, actual);
+				Assert.assertArrayEquals(new byte[]{4, 1, 2, 3}, actual);
 				handler4Run = true;
 			}
 		});
@@ -122,10 +122,10 @@ public class QcfpParserTest extends TestCase {
 		h.registerHandler(5, new QcfpCallback(){
 			public void run(byte[] packet, int length)
 			{
-				assertEquals(12, length);
+				assertEquals(11, length);
 				byte[] actual = new byte[length];
 				System.arraycopy(packet, 0, actual, 0, length);
-				Assert.assertArrayEquals(new byte[]{5, 5, 5, 0, 5, 5, 5, 0, 5, 5, 5, 0}, actual);
+				Assert.assertArrayEquals(new byte[]{5, 5, 5, 0, 5, 5, 5, 0, 5, 5, 5}, actual);
 				handler5Run = true;
 			}
 		});
@@ -133,10 +133,10 @@ public class QcfpParserTest extends TestCase {
 		h.registerHandler(6, new QcfpCallback(){
 			public void run(byte[] packet, int length)
 			{
-				assertEquals(2, length);
+				assertEquals(1, length);
 				byte[] actual = new byte[length];
 				System.arraycopy(packet, 0, actual, 0, length);
-				Assert.assertArrayEquals(new byte[]{6, 0}, actual);
+				Assert.assertArrayEquals(new byte[]{6}, actual);
 				handler6Run = true;
 			}
 		});
