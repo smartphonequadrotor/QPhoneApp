@@ -2,10 +2,14 @@ package com.ventus.smartphonequadrotor.qphoneapp.util.control;
 
 import java.io.IOException;
 
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
+import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.MoveCommand;
 import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager;
 
 /**
@@ -15,12 +19,22 @@ import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationMan
  */
 public class DataAggregator {
 	public static final String TAG = DataAggregator.class.getName();
+	public static final int BT_BUFFER_SIZE = 1024;
 	
 	private MainService owner;
-	private byte[] buffer = new byte[1024];
+	private byte[] btBuffer = new byte[BT_BUFFER_SIZE];
+	
+	/**
+	 * This represents the current error in displacement. Thus, it is desiredDisplacement - currentDisplacement.
+	 * When the controller sends a move command, its displacement is added to this. When the 
+	 * bluetooth sends acceleration, it is used to calculate the actual deltaDisplacement of the 
+	 * quadrotor. That value is subtracted from this desplacementError.
+	 */
+	private SimpleMatrix displacementError;
 	
 	public DataAggregator(MainService owner) {
 		this.owner = owner;
+		displacementError = SimpleMatrix.zeros(3, 1);
 	}
 	
 	/**
@@ -32,7 +46,25 @@ public class DataAggregator {
 	 */
 	public void processControllerMessage(Envelope envelope) {
 		if (envelope.getCommands().getMoveCommandArray().length != 0) {
-			owner.sendBluetoothMessage("g");
+			//the controller just sent a series of move commands
+			for (int i = 0; i < envelope.getCommands().getMoveCommandArray().length; i++) {
+				MoveCommand moveCommand = envelope.getCommands().getMoveCommandArray()[i];
+				SimpleMatrix deltaDisplacement = new SimpleMatrix(3, 1, true, new double[]{
+					moveCommand.getXVector(),
+					moveCommand.getYVector(),
+					moveCommand.getZVector()
+				});
+				//normalize deltaDisplacement to make it a direction vector
+				deltaDisplacement = deltaDisplacement.divide(deltaDisplacement.normF());
+				//multiply the direction vector with the speed and time to get the actual
+				//delta displacement
+				deltaDisplacement = deltaDisplacement.mult(
+					moveCommand.getSpeed()*moveCommand.getDuration()
+				);
+				//TODO: use the speed and time in the move command to actually affect the speed of the quadrotor
+				//In the future, a more complicated outer control-loop could be build that takes
+				//into account the speed and time while deciding the angles for the quadrotor.
+			}
 		}
 	}
 	
@@ -53,12 +85,24 @@ public class DataAggregator {
 		public void run() {
 			while (true) {
 				try {
-					int length = owner.getBluetoothManager().getInputStream().read(buffer);
-					Log.d(TAG, new String(buffer).substring(0, length));
+					//the following is a blocking call.
+					int length = owner.getBluetoothManager().getInputStream().read(btBuffer);
+					Log.d(TAG, new String(btBuffer).substring(0, length));
 				} catch (IOException e) {
 					Log.e(TAG, "Could not read from QCB", e);
 				}
 			}
+		}
+	};
+	
+	/**
+	 * The bluetooth reader thread will use this handler to send messages to the service
+	 * thread. These messages will contain the object parsed from the bluetooth strings.
+	 */
+	private Handler bluetoothMessageHandler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			//TODO: get the accelerometer, magnetometer and gyro values
 		}
 	};
 }

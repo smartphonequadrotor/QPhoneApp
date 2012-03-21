@@ -19,17 +19,17 @@ public class ControlLoop extends Thread {
 	public static final String TAG = ControlLoop.class.getName();
 	public static final int NUMBER_OF_CMAC_LAYERS = 3;
 	public static final int QUANTIZATION_NUMBER = 100;
-	public static final float alternateWeightsLearningGain = 1000;		//Kappa in equation 14 of main-paper
-	public static final float learningErrorGain = 0.001f;				//alpha in equations 14 and 15 of main-paper
-	public static final float alternateWeightDeviationGain = 0.001f;	//rho in equation 14 of main-paper
-	public static final float leakageTermGain = 0.000001f;				//nu in equation 14 of main-paper
-	public static final float controlWeightsLearningGain = 1000;		//beta in equation 14 of main-paper
-	public static final float guideWeightsGain = 0.000001f;				//eta-1 in equation 14 of main-paper
-	public static final float guideWeightsGainDeadzone = 0.00001f;		//eta-2 in equation 14 of main-paper
-	public static final float deadZone = 10;							//lower-case delta in equations 14 and 15 of main-paper
-	public static final double currentStateErrorGain = 4;				//defined after equation 3 as upper-case lambda in main-paper
+	public static final float ALTERNATE_WEIGHTS_LEARNING_GAIN = 1000;	//Kappa in equation 14 of main-paper
+	public static final float LEARNING_ERROR_GAIN = 0.001f;				//alpha in equations 14 and 15 of main-paper
+	public static final float ALTERNATE_WEIGHT_DEVIATION_GAIN = 0.001f;	//rho in equation 14 of main-paper
+	public static final float LEAKAGE_TERM_GAIN = 0.000001f;			//nu in equation 14 of main-paper
+	public static final float CONTROL_WEIGHTS_LEARNING_GAIN = 1000;		//beta in equation 14 of main-paper
+	public static final float GUIDE_WEIGHTS_GAIN = 0.000001f;			//eta-1 in equation 14 of main-paper
+	public static final float GUIDE_WEIGHTS_GAIN_DEADZONE = 0.00001f;	//eta-2 in equation 14 of main-paper
+	public static final float DEADZONE = 10;							//lower-case delta in equations 14 and 15 of main-paper
+	public static final double CURRENT_STATE_ERROR_GAIN = 4;			//defined after equation 3 as upper-case lambda in main-paper
 	//the following matrix is used to convert the cmac output to motor speeds
-	private static final SimpleMatrix cmacOutput2MotorSpeedMatrix = new SimpleMatrix(
+	private static final SimpleMatrix CMAC_OUTPUT_TO_MOTOR_SPEED_MATRIX = new SimpleMatrix(
 		CmacOutput.NUMBER_OF_WEIGHTS,
 		CmacOutput.NUMBER_OF_WEIGHTS,
 		true,
@@ -135,30 +135,30 @@ public class ControlLoop extends Thread {
 		deltaAlternateWeights = meanAlternateWeights
 								.repmat(NUMBER_OF_CMAC_LAYERS, 1)
 								.minus(alternateWeights)
-								.mult(alternateWeightDeviationGain);
+								.mult(ALTERNATE_WEIGHT_DEVIATION_GAIN);
 		deltaAlternateWeights = deltaAlternateWeights.minus(
-									alternateWeights.mult(leakageTermGain)
+									alternateWeights.mult(LEAKAGE_TERM_GAIN)
 								);
 		deltaControlWeights = 	normalizedActivationFunctions.transpose().mult(
-									CmacInputParam.getStateErrors(input, currentStateErrorGain)
+									CmacInputParam.getStateErrors(input, CURRENT_STATE_ERROR_GAIN)
 								).mult(-1.0);	//TODO talk to Macnab whether this is allright.
 		SimpleMatrix lyapunovBoundednessTerm = 	normalizedActivationFunctions	//helps guaranteed bounded signals
 												.transpose()
 												.mult(weightDiff)
-												.mult(learningErrorGain);
-		if (weightDiffNorm > deadZone) {
+												.mult(LEARNING_ERROR_GAIN);
+		if (weightDiffNorm > DEADZONE) {
 			deltaAlternateWeights = deltaAlternateWeights.plus(lyapunovBoundednessTerm);
 			deltaControlWeights = 	deltaControlWeights.minus(lyapunovBoundednessTerm);
 			deltaControlWeights = 	deltaControlWeights.plus(
-										alternateWeights.minus(controlWeights).mult(guideWeightsGain)
+										alternateWeights.minus(controlWeights).mult(GUIDE_WEIGHTS_GAIN)
 									);
 		} else {
 			deltaControlWeights =	deltaControlWeights.plus(
-										alternateWeights.minus(controlWeights).mult(guideWeightsGainDeadzone)
+										alternateWeights.minus(controlWeights).mult(GUIDE_WEIGHTS_GAIN_DEADZONE)
 									);
 		}
-		deltaAlternateWeights = deltaAlternateWeights.mult(alternateWeightsLearningGain);
-		deltaControlWeights = deltaControlWeights.mult(controlWeightsLearningGain);
+		deltaAlternateWeights = deltaAlternateWeights.mult(ALTERNATE_WEIGHTS_LEARNING_GAIN);
+		deltaControlWeights = deltaControlWeights.mult(CONTROL_WEIGHTS_LEARNING_GAIN);
 
 		long timeInterval = 0;
 		long currentTimestamp = (new Date()).getTime();
@@ -186,7 +186,7 @@ public class ControlLoop extends Thread {
 	 * @return 1-by-{@value CmacOutput#NUMBER_OF_WEIGHTS} matrix
 	 */
 	public SimpleMatrix cmacOutput2MotorSpeeds(SimpleMatrix cmacOutput) {
-		SimpleMatrix motorSpeeds = cmacOutput2MotorSpeedMatrix.mult(cmacOutput.transpose()).transpose();
+		SimpleMatrix motorSpeeds = CMAC_OUTPUT_TO_MOTOR_SPEED_MATRIX.mult(cmacOutput.transpose()).transpose();
 		//motorSpeeds is also a 1-by-{@value CmacOutput#NUMBER_OF_WEIGHTS} matrix
 		//for each item in the motorSpeeds matrix, its square root needs to be taken
 		for (int i = 0; i < motorSpeeds.getNumElements(); i++) {

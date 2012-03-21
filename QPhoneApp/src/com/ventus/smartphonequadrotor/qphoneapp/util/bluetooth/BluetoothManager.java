@@ -108,6 +108,12 @@ public class BluetoothManager {
 		owner.getDataAggregator().startListening();
 	}
 	
+	/**
+	 * This method can be used to send messages to the QCB over bluetooth. This method
+	 * is synchronous and thus can be accessed from the control loop directly.
+	 * @param message
+	 * @throws IOException
+	 */
 	public void write(byte[] message) throws IOException {
 		synchronized(outputStreamLock){
 			if (outputStream != null)

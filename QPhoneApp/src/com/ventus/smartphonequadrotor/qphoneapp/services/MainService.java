@@ -4,14 +4,19 @@ import java.io.IOException;
 
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.BluetoothManager;
+import com.ventus.smartphonequadrotor.qphoneapp.util.control.ControlLoop;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.DataAggregator;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
 import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager;
+import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager.NcmOnMessageListener;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -27,6 +32,7 @@ public class MainService extends Service {
 	private NetworkCommunicationManager networkCommunicationManager;
 	private BluetoothManager bluetoothManager;
 	private DataAggregator dataAggregator;
+	private ControlLoop controlLoop;
 
 	@Override
 	public void onCreate() {
@@ -99,4 +105,16 @@ public class MainService extends Service {
 			Log.e(TAG, "Could not send message", ioEx);
 		}
 	}
+	
+	/**
+	 * For any components of {@link MainService} that run on a separate thread, this
+	 * is the primary means of communication. 
+	 */
+	public Handler handler = new Handler() {
+		@Override
+		public void handleMessage(Message msg) {
+			Log.i(TAG, "Message received in the main service: " + msg.obj.toString());
+			//TODO
+		}
+	};
 }
