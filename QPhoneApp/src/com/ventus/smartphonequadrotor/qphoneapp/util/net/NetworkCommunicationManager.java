@@ -15,6 +15,14 @@ import android.content.Intent;
 import android.util.Log;
 import android.widget.Toast;
 
+/**
+ * This class provides a common interface for using the network communication to interface with
+ * the controller. This class does not require the user to differentiate between the Xmpp or Direct
+ * Socket methods for basic reads and writes. Thus, once the initial setup is done, the users of this
+ * class can be blissfully ignorant of the actual implementation details.
+ * @author abhin
+ *
+ */
 public class NetworkCommunicationManager {
 	public static final String TAG = NetworkCommunicationManager.class.getName();
 	private MainService owner;
