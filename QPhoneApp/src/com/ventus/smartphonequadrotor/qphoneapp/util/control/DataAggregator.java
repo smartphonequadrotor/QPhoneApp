@@ -8,6 +8,8 @@ import android.util.Log;
 
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
+import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpHandlers;
+import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpParser;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.MoveCommand;
 import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager;
@@ -23,6 +25,7 @@ public class DataAggregator {
 	
 	private MainService owner;
 	private byte[] btBuffer = new byte[BT_BUFFER_SIZE];
+	private QcfpHandlers packetHandlers;
 	
 	/**
 	 * This represents the current error in displacement. Thus, it is desiredDisplacement - currentDisplacement.
@@ -35,6 +38,7 @@ public class DataAggregator {
 	public DataAggregator(MainService owner) {
 		this.owner = owner;
 		displacementError = SimpleMatrix.zeros(3, 1);
+		this.packetHandlers = new QcfpHandlers();
 	}
 	
 	/**
@@ -83,11 +87,17 @@ public class DataAggregator {
 	Thread bluetoothReader = new Thread() {
 		@Override
 		public void run() {
+			byte[] buffer = new byte[2*QcfpParser.QCFP_MAX_PACKET_SIZE];
+			QcfpParser bluetoothDataParser = new QcfpParser(QcfpParser.QCFP_MAX_PACKET_SIZE, packetHandlers);
+			
 			while (true) {
 				try {
 					//the following is a blocking call.
 					int length = owner.getBluetoothManager().getInputStream().read(btBuffer);
-					Log.d(TAG, new String(btBuffer).substring(0, length));
+					if(length > 0) {
+						// Decodes data and dispatches packet handler if a full packet is received
+						bluetoothDataParser.addData(buffer, length);
+					}
 				} catch (IOException e) {
 					Log.e(TAG, "Could not read from QCB", e);
 				}
