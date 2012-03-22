@@ -1,19 +1,16 @@
 package com.ventus.smartphonequadrotor.qphoneapp.util.net;
 
 import com.google.gson.Gson;
-import com.ventus.smartphonequadrotor.qphoneapp.activities.BluetoothConnectionActivity;
 import com.ventus.smartphonequadrotor.qphoneapp.activities.XmppConnectionActivity;
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
-import com.ventus.smartphonequadrotor.qphoneapp.util.json.ResponseAbstract;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Responses;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.TriAxisSensorResponse;
 
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
-import android.widget.Toast;
 
 /**
  * This class provides a common interface for using the network communication to interface with
