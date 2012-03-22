@@ -8,6 +8,7 @@ import android.util.Log;
 
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
+import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCallback;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpHandlers;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpParser;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
@@ -21,11 +22,10 @@ import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationMan
  */
 public class DataAggregator {
 	public static final String TAG = DataAggregator.class.getName();
-	public static final int BT_BUFFER_SIZE = 1024;
 	
 	private MainService owner;
-	private byte[] btBuffer = new byte[BT_BUFFER_SIZE];
 	private QcfpHandlers packetHandlers;
+	private QcfpParser bluetoothDataParser;
 	
 	/**
 	 * This represents the current error in displacement. Thus, it is desiredDisplacement - currentDisplacement.
@@ -39,6 +39,8 @@ public class DataAggregator {
 		this.owner = owner;
 		displacementError = SimpleMatrix.zeros(3, 1);
 		this.packetHandlers = new QcfpHandlers();
+		bluetoothDataParser =  new QcfpParser(QcfpParser.QCFP_MAX_PACKET_SIZE, packetHandlers);
+		packetHandlers.registerHandler(QcfpHandlers.QCFP_ASYNC_DATA, asyncDataCallback);
 	}
 	
 	/**
@@ -85,15 +87,23 @@ public class DataAggregator {
 	 * bluetooth input stream. 
 	 */
 	Thread bluetoothReader = new Thread() {
+		public static final int BUFFER_SIZE = 2*QcfpParser.QCFP_MAX_PACKET_SIZE;
+		
 		@Override
 		public void run() {
-			byte[] buffer = new byte[2*QcfpParser.QCFP_MAX_PACKET_SIZE];
-			QcfpParser bluetoothDataParser = new QcfpParser(QcfpParser.QCFP_MAX_PACKET_SIZE, packetHandlers);
+			byte[] buffer = new byte[BUFFER_SIZE];
 			
 			while (true) {
 				try {
 					//the following is a blocking call.
-					int length = owner.getBluetoothManager().getInputStream().read(btBuffer);
+					int length = owner.getBluetoothManager().getInputStream().read(buffer);
+					//send this data to the service thread
+					if (bluetoothMessageHandler != null) {
+						Message btMsg = Message.obtain();
+						btMsg.obj = buffer.clone();
+						btMsg.arg1 = length;
+						bluetoothMessageHandler.sendMessage(btMsg);
+					}
 					if(length > 0) {
 						// Decodes data and dispatches packet handler if a full packet is received
 						bluetoothDataParser.addData(buffer, length);
@@ -112,7 +122,22 @@ public class DataAggregator {
 	private Handler bluetoothMessageHandler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
-			//TODO: get the accelerometer, magnetometer and gyro values
+			int length = msg.arg1;
+			if (length > 0) {	//if length is greater than 0
+				bluetoothDataParser.addData((byte[])msg.obj, length);
+			}
+		}
+	};
+	
+	/**
+	 * This callback receives data from the bluetooth. The data is in the form of a 
+	 * byte array and needs to be parsed according to the QCFB protocol guide in the
+	 * project documents folder on google docs.
+	 */
+	private QcfpCallback asyncDataCallback = new QcfpCallback() {
+		@Override
+		public void run(byte[] packet, int length) {
+			
 		}
 	};
 }
