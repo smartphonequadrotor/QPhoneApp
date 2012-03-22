@@ -140,7 +140,7 @@ public class DataAggregator {
 		private static final int GYRO_PAYLOAD_LENGTH = 12;
 		private static final int MAG_PAYLOAD_LENGTH = 12;
 		
-		private static final int TIMESTAMP_DATA_START_INDEX = 2;
+		private static final int TIMESTAMP_START_INDEX = 2;
 		
 		private static final int X_INDEX_LSB = 6;
 		private static final int X_INDEX_MSB = 7;
@@ -155,12 +155,12 @@ public class DataAggregator {
 			if(length >= 7)
 			{
 				int timestamp =
-						(packet[TIMESTAMP_DATA_START_INDEX]   <<  0) |
-						(packet[TIMESTAMP_DATA_START_INDEX+1] <<  8) |
-						(packet[TIMESTAMP_DATA_START_INDEX+2] << 16) |
-						(packet[TIMESTAMP_DATA_START_INDEX+3] << 24);
+						(packet[TIMESTAMP_START_INDEX]   <<  0) |
+						(packet[TIMESTAMP_START_INDEX+1] <<  8) |
+						(packet[TIMESTAMP_START_INDEX+2] << 16) |
+						(packet[TIMESTAMP_START_INDEX+3] << 24);
 				
-				Log.d(TAG, String.format("Timestamp: %d", timestamp));
+				Log.d(TAG, String.format("Timestamp: %u", timestamp));
 				
 				switch(packet[CMD10_DATA_SOURCE_INDEX])
 				{
