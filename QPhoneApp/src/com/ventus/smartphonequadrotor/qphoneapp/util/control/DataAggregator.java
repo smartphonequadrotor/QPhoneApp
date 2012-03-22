@@ -103,10 +103,6 @@ public class DataAggregator {
 						btMsg.arg1 = length;
 						bluetoothMessageHandler.sendMessage(btMsg);
 					}
-					if(length > 0) {
-						// Decodes data and dispatches packet handler if a full packet is received
-						bluetoothDataParser.addData(buffer, length);
-					}
 				} catch (IOException e) {
 					Log.e(TAG, "Could not read from QCB", e);
 				}
@@ -122,7 +118,7 @@ public class DataAggregator {
 		@Override
 		public void handleMessage(Message msg) {
 			int length = msg.arg1;
-			if (length > 0) {	//if length is greater than 0
+			if (length > 0) {
 				bluetoothDataParser.addData((byte[])msg.obj, length);
 			}
 		}
@@ -134,9 +130,73 @@ public class DataAggregator {
 	 * project documents folder on google docs.
 	 */
 	private QcfpCallback asyncDataCallback = new QcfpCallback() {
+		private static final int CMD10_DATA_SOURCE_INDEX = 1;
+		private static final int DATA_SOURCE_ACCEL = 0x01;
+		private static final int DATA_SOURCE_GYRO = 0x02;
+		private static final int DATA_SOURCE_MAG = 0x03;
+		
+		private static final int ACCEL_PAYLOAD_LENGTH = 12;
+		private static final int GYRO_PAYLOAD_LENGTH = 12;
+		private static final int MAG_PAYLOAD_LENGTH = 12;
+		
+		private static final int TIMESTAMP_START_INDEX = 2;
+		
+		private static final int X_INDEX_LSB = 6;
+		private static final int X_INDEX_MSB = 7;
+		private static final int Y_INDEX_LSB = 8;
+		private static final int Y_INDEX_MSB = 9;
+		private static final int Z_INDEX_LSB = 10;
+		private static final int Z_INDEX_MSB = 11;
+		
 		@Override
 		public void run(byte[] packet, int length) {
-			
+			// Require command id, data source, 4 timestamp, and at least 1 payload
+			if(length >= 7)
+			{
+				int timestamp =
+						(packet[TIMESTAMP_START_INDEX]   <<  0) |
+						(packet[TIMESTAMP_START_INDEX+1] <<  8) |
+						(packet[TIMESTAMP_START_INDEX+2] << 16) |
+						(packet[TIMESTAMP_START_INDEX+3] << 24);
+				
+				Log.d(TAG, String.format("Timestamp: %u", timestamp));
+				
+				switch(packet[CMD10_DATA_SOURCE_INDEX])
+				{
+				case DATA_SOURCE_ACCEL:
+					if(length == ACCEL_PAYLOAD_LENGTH)
+					{
+						int x, y, z;
+						x = packet[X_INDEX_LSB] | (packet[X_INDEX_MSB] << 8);
+						y = packet[Y_INDEX_LSB] | (packet[Y_INDEX_MSB] << 8);
+						z = packet[Z_INDEX_LSB] | (packet[Z_INDEX_MSB] << 8);
+						Log.d(TAG, String.format("Accelerometer: X: %d Y: %d Z: %d", x, y, z));
+					}
+					break;
+				case DATA_SOURCE_GYRO:
+					if(length == GYRO_PAYLOAD_LENGTH)
+					{
+						int x, y, z;
+						x = packet[X_INDEX_LSB] | (packet[X_INDEX_MSB] << 8);
+						y = packet[Y_INDEX_LSB] | (packet[Y_INDEX_MSB] << 8);
+						z = packet[Z_INDEX_LSB] | (packet[Z_INDEX_MSB] << 8);
+						Log.d(TAG, String.format("Gyroscope: X: %d Y: %d Z: %d", x, y, z));
+					}
+					break;
+				case DATA_SOURCE_MAG:
+					if(length == MAG_PAYLOAD_LENGTH)
+					{
+						int x, y, z;
+						x = packet[X_INDEX_LSB] | (packet[X_INDEX_MSB] << 8);
+						y = packet[Y_INDEX_LSB] | (packet[Y_INDEX_MSB] << 8);
+						z = packet[Z_INDEX_LSB] | (packet[Z_INDEX_MSB] << 8);
+						Log.d(TAG, String.format("Magnetometer: X: %d Y: %d Z: %d", x, y, z));
+					}
+					break;
+				default:
+					break;
+				}
+			}
 		}
 	};
 }

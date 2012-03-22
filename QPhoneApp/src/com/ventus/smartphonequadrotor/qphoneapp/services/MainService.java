@@ -6,12 +6,9 @@ import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.BluetoothManager;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.ControlLoop;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.DataAggregator;
-import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
 import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager;
-import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager.NcmOnMessageListener;
 
 import android.app.Service;
-import android.bluetooth.BluetoothAdapter;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Handler;
@@ -98,9 +95,9 @@ public class MainService extends Service {
 	 * over bluetooth.
 	 * @param message
 	 */
-	public void sendBluetoothMessage(String message) {
+	public void sendBluetoothMessage(byte[] message) {
 		try {
-			this.bluetoothManager.write(message.getBytes());
+			this.bluetoothManager.write(message);
 		} catch (IOException ioEx) {
 			Log.e(TAG, "Could not send message", ioEx);
 		}
