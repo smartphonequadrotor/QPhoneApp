@@ -78,43 +78,14 @@ public class DataAggregator {
 	 * listening to messages can start.
 	 */
 	public void startListening() {
-		bluetoothReader.start();
+		owner.getBluetoothManager().bluetoothReader.start();
 	}
-	
-	/**
-	 * This thread is an infinite loop that contains a blocking call to the
-	 * bluetooth input stream. 
-	 */
-	Thread bluetoothReader = new Thread() {
-		public static final int BUFFER_SIZE = 2*QcfpParser.QCFP_MAX_PACKET_SIZE;
-		
-		@Override
-		public void run() {
-			byte[] buffer = new byte[BUFFER_SIZE];
-			
-			while (true) {
-				try {
-					//the following is a blocking call.
-					int length = owner.getBluetoothManager().getInputStream().read(buffer);
-					//send this data to the service thread
-					if (bluetoothMessageHandler != null) {
-						Message btMsg = Message.obtain();
-						btMsg.obj = buffer.clone();
-						btMsg.arg1 = length;
-						bluetoothMessageHandler.sendMessage(btMsg);
-					}
-				} catch (IOException e) {
-					Log.e(TAG, "Could not read from QCB", e);
-				}
-			}
-		}
-	};
 	
 	/**
 	 * The bluetooth reader thread will use this handler to send messages to the service
 	 * thread. These messages will contain the object parsed from the bluetooth strings.
 	 */
-	private Handler bluetoothMessageHandler = new Handler() {
+	public Handler bluetoothMessageHandler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
 			int length = msg.arg1;
@@ -153,23 +124,25 @@ public class DataAggregator {
 			// Require command id, data source, 4 timestamp, and at least 1 payload
 			if(length >= 7)
 			{
-				int timestamp =
-						(packet[TIMESTAMP_START_INDEX]   <<  0) |
-						(packet[TIMESTAMP_START_INDEX+1] <<  8) |
-						(packet[TIMESTAMP_START_INDEX+2] << 16) |
-						(packet[TIMESTAMP_START_INDEX+3] << 24);
+				// Timestamp is unsigned
+				long timestamp =
+						((packet[TIMESTAMP_START_INDEX]   <<  0) & 0x00000000FF) |
+						((packet[TIMESTAMP_START_INDEX+1] <<  8) & 0x000000FF00) |
+						((packet[TIMESTAMP_START_INDEX+2] << 16) & 0x0000FF0000) |
+						((packet[TIMESTAMP_START_INDEX+3] << 24) & 0x00FF000000);
 				
 				Log.d(TAG, String.format("Timestamp: %u", timestamp));
 				
+				// sensor data is signed
 				switch(packet[CMD10_DATA_SOURCE_INDEX])
 				{
 				case DATA_SOURCE_ACCEL:
 					if(length == ACCEL_PAYLOAD_LENGTH)
 					{
 						int x, y, z;
-						x = packet[X_INDEX_LSB] | (packet[X_INDEX_MSB] << 8);
-						y = packet[Y_INDEX_LSB] | (packet[Y_INDEX_MSB] << 8);
-						z = packet[Z_INDEX_LSB] | (packet[Z_INDEX_MSB] << 8);
+						x = (packet[X_INDEX_LSB] & 0x00FF) | (packet[X_INDEX_MSB] << 8);
+						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
+						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
 						Log.d(TAG, String.format("Accelerometer: X: %d Y: %d Z: %d", x, y, z));
 					}
 					break;
@@ -177,9 +150,9 @@ public class DataAggregator {
 					if(length == GYRO_PAYLOAD_LENGTH)
 					{
 						int x, y, z;
-						x = packet[X_INDEX_LSB] | (packet[X_INDEX_MSB] << 8);
-						y = packet[Y_INDEX_LSB] | (packet[Y_INDEX_MSB] << 8);
-						z = packet[Z_INDEX_LSB] | (packet[Z_INDEX_MSB] << 8);
+						x = (packet[X_INDEX_LSB] & 0x00FF) | (packet[X_INDEX_MSB] << 8);
+						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
+						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
 						Log.d(TAG, String.format("Gyroscope: X: %d Y: %d Z: %d", x, y, z));
 					}
 					break;
@@ -187,9 +160,9 @@ public class DataAggregator {
 					if(length == MAG_PAYLOAD_LENGTH)
 					{
 						int x, y, z;
-						x = packet[X_INDEX_LSB] | (packet[X_INDEX_MSB] << 8);
-						y = packet[Y_INDEX_LSB] | (packet[Y_INDEX_MSB] << 8);
-						z = packet[Z_INDEX_LSB] | (packet[Z_INDEX_MSB] << 8);
+						x = (packet[X_INDEX_LSB] & 0x00FF) | (packet[X_INDEX_MSB] << 8);
+						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
+						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
 						Log.d(TAG, String.format("Magnetometer: X: %d Y: %d Z: %d", x, y, z));
 					}
 					break;

@@ -13,6 +13,8 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
+import android.os.Message;
+import android.util.Log;
 
 /**
  * Manager bluetooth connection and data transfer.
@@ -59,32 +61,32 @@ public class BluetoothManager {
 			synchronized(socketLock) {
 				socket = device.createRfcommSocketToServiceRecord(bluetoothConnectionUuid);
 			}
+			
+			new Thread(new Runnable(){
+				public void run() {
+					InputStream tempIn = null;
+					OutputStream tempOut = null;
+					try {
+						synchronized (socketLock) {
+							socket.connect();						
+						}
+						tempIn = socket.getInputStream();
+						tempOut = socket.getOutputStream();
+						sendConnectionSuccess();
+					} catch (IOException ex) {
+						sendConnectionFailure();
+					}
+					synchronized(inputStreamLock) {
+						inputStream = tempIn;
+					}
+					synchronized(outputStreamLock) {
+						outputStream = tempOut;
+					}
+				}
+			}).start();
 		} catch (Exception ex) {
 			sendConnectionFailure();
 		}
-		
-		new Thread(new Runnable(){
-			public void run() {
-				InputStream tempIn = null;
-				OutputStream tempOut = null;
-				try {
-					synchronized (socketLock) {
-						socket.connect();						
-					}
-					tempIn = socket.getInputStream();
-					tempOut = socket.getOutputStream();
-					sendConnectionSuccess();
-				} catch (IOException ex) {
-					sendConnectionFailure();
-				}
-				synchronized(inputStreamLock) {
-					inputStream = tempIn;
-				}
-				synchronized(outputStreamLock) {
-					outputStream = tempOut;
-				}
-			}
-		}).start();
 	} 
 	
 	private void sendConnectionFailure() {
@@ -118,4 +120,33 @@ public class BluetoothManager {
 				outputStream.write(message);
 		}
 	}
+	
+	/**
+	 * This thread is an infinite loop that contains a blocking call to the
+	 * bluetooth input stream. 
+	 */
+	public Thread bluetoothReader = new Thread() {
+		public static final int BUFFER_SIZE = 2*QcfpParser.QCFP_MAX_PACKET_SIZE;
+		
+		@Override
+		public void run() {
+			byte[] buffer = new byte[BUFFER_SIZE];
+			
+			while (true) {
+				try {
+					//the following is a blocking call.
+					int length = owner.getBluetoothManager().getInputStream().read(buffer);
+					//send this data to the service thread
+					if (owner.getDataAggregator().bluetoothMessageHandler != null) {
+						Message btMsg = Message.obtain();
+						btMsg.obj = buffer.clone();
+						btMsg.arg1 = length;
+						owner.getDataAggregator().bluetoothMessageHandler.sendMessage(btMsg);
+					}
+				} catch (IOException e) {
+					Log.e(TAG, "Could not read from QCB", e);
+				}
+			}
+		}
+	};
 }
