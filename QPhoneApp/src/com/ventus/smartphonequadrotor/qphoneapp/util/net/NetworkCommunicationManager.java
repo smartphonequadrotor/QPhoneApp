@@ -8,6 +8,7 @@ import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.ResponseAbstract;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Responses;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.SystemState;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.TriAxisSensorResponse;
 
 import android.content.Context;
@@ -130,7 +131,17 @@ public class NetworkCommunicationManager {
 			Log.d(TAG, "Message from controller: " + message);
 			//attempt to decode the message
 			Envelope envelope = gson.fromJson(message, Envelope.class);
-			owner.getDataAggregator().processControllerMessage(envelope);
+			if (envelope.getCommands().getMoveCommandArray().length > 0) {
+				owner.getDataAggregator().processMoveCommand(envelope.getCommands().getMoveCommandArray());
+			} else if (!envelope.getCommands().getSystemState().equals("")) {
+				if (envelope.getCommands().getSystemState().equals(SystemState.ARMED.toString())) {
+					//the user wishes to arm the quadrotor
+					//TODO
+				} else if (envelope.getCommands().getSystemState().equals(SystemState.CALIBRATING)) {
+					//the user wishes to calibrate the quadrotor
+					//TODO
+				}
+			}
 			Log.d(TAG, envelope.toString());
 		}		
 	}
@@ -200,27 +211,5 @@ public class NetworkCommunicationManager {
 			XmppConnectionActivity.NETWORK_STATUS_CONNECTED
 		);
 		owner.sendBroadcast(intent);
-	}
-	
-	//This method is only for testing
-	public void sendGyroResponse(long timestamp, float x, float y, float z) {
-		Envelope envelope = new Envelope(
-			null, 
-			null, 
-			new Responses(
-				new TriAxisSensorResponse[] {
-					new TriAxisSensorResponse(timestamp, x, y, z)
-				}, 
-				null, 
-				null, 
-				null,
-				null
-			)
-		);
-		try {
-			sendNetworkMessage(gson.toJson(envelope, Envelope.class));
-		} catch (Exception e) {
-			Log.d(TAG, "Could not send message to controller");
-		}
 	}
 }

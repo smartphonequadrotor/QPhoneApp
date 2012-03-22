@@ -48,24 +48,23 @@ public class DataAggregator {
 	 * gets a message from the controller. The messages have to be processed and the correct
 	 * actions have to be taken. This method is called as part of an event listener, so operations
 	 * involving heavy lifting are not recommended without using external threads.
-	 * @param envelope
+	 * @param MoveCommands[]
 	 */
-	public void processControllerMessage(Envelope envelope) {
-		if (envelope.getCommands().getMoveCommandArray().length != 0) {
+	public void processMoveCommand(MoveCommand[] moveCommands) {
+		if (moveCommands.length != 0) {
 			//the controller just sent a series of move commands
-			for (int i = 0; i < envelope.getCommands().getMoveCommandArray().length; i++) {
-				MoveCommand moveCommand = envelope.getCommands().getMoveCommandArray()[i];
+			for (int i = 0; i < moveCommands.length; i++) {
 				SimpleMatrix deltaDisplacement = new SimpleMatrix(3, 1, true, new double[]{
-					moveCommand.getXVector(),
-					moveCommand.getYVector(),
-					moveCommand.getZVector()
+					moveCommands[i].getXVector(),
+					moveCommands[i].getYVector(),
+					moveCommands[i].getZVector()
 				});
 				//normalize deltaDisplacement to make it a direction vector
 				deltaDisplacement = deltaDisplacement.divide(deltaDisplacement.normF());
 				//multiply the direction vector with the speed and time to get the actual
 				//delta displacement
 				deltaDisplacement = deltaDisplacement.mult(
-					moveCommand.getSpeed()*moveCommand.getDuration()
+					moveCommands[i].getSpeed()*moveCommands[i].getDuration()
 				);
 				//TODO: use the speed and time in the move command to actually affect the speed of the quadrotor
 				//In the future, a more complicated outer control-loop could be build that takes

@@ -6,17 +6,20 @@ public class Responses {
 	private CameraResponse[] Camera;
 	private BatteryResponse[] Battery;
 	private GpsResponse[] GPS;
+	private String SystemState;
 	
 	public Responses(	TriAxisSensorResponse[] gyro,
 						TriAxisSensorResponse[] accel, 
 						CameraResponse[] camera,
 						BatteryResponse[] battery, 
-						GpsResponse[] gps	) {
+						GpsResponse[] gps,
+						String systemState) {
 		Gyro = gyro;
 		Accel = accel;
 		Camera = camera;
 		Battery = battery;
 		GPS = gps;
+		SystemState = systemState;
 	}
 	
 	public TriAxisSensorResponse[] getGyro() {
@@ -34,16 +37,20 @@ public class Responses {
 	public GpsResponse[] getGps() {
 		return GPS;
 	}
+	public String getSystemState() {
+		return SystemState;
+	}
 
 	@Override
 	public String toString() {
 		return String.format(
-			"Gyro: %1$s\nAccel: %2$s\nCamera: %3$s\nBattery: %4$s\nGps: %5$s",
+			"Gyro: %1$s\nAccel: %2$s\nCamera: %3$s\nBattery: %4$s\nGps: %5$s\nSystemState: %6$s\n",
 			Gyro.toString(),
 			Accel.toString(),
 			Camera.toString(),
 			Battery.toString(),
-			GPS.toString()
+			GPS.toString(),
+			SystemState
 		);
 	}
 }
