@@ -11,7 +11,6 @@ import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCallback;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpHandlers;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpParser;
-import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.MoveCommand;
 import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager;
 
@@ -26,6 +25,7 @@ public class DataAggregator {
 	private MainService owner;
 	private QcfpHandlers packetHandlers;
 	private QcfpParser bluetoothDataParser;
+	//private KinematicsEstimator kinematicsEstimator;
 	
 	/**
 	 * This represents the current error in displacement. Thus, it is desiredDisplacement - currentDisplacement.
@@ -41,6 +41,7 @@ public class DataAggregator {
 		this.packetHandlers = new QcfpHandlers();
 		bluetoothDataParser =  new QcfpParser(QcfpParser.QCFP_MAX_PACKET_SIZE, packetHandlers);
 		packetHandlers.registerHandler(QcfpHandlers.QCFP_ASYNC_DATA, asyncDataCallback);
+		//kinematicsEstimator = new KinematicsEstimator();
 	}
 	
 	/**
@@ -124,6 +125,9 @@ public class DataAggregator {
 			// Require command id, data source, 4 timestamp, and at least 1 payload
 			if(length >= 7)
 			{
+				// values from tri axis sensors
+				int x, y, z;
+				
 				// Timestamp is unsigned
 				long timestamp =
 						((packet[TIMESTAMP_START_INDEX]   <<  0) & 0x00000000FF) |
@@ -139,30 +143,30 @@ public class DataAggregator {
 				case DATA_SOURCE_ACCEL:
 					if(length == ACCEL_PAYLOAD_LENGTH)
 					{
-						int x, y, z;
 						x = (packet[X_INDEX_LSB] & 0x00FF) | (packet[X_INDEX_MSB] << 8);
 						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
 						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
+						//kinematicsEstimator.registerAccelValues(x, y, z, timestamp);
 						Log.d(TAG, String.format("Accelerometer: X: %d Y: %d Z: %d", x, y, z));
 					}
 					break;
 				case DATA_SOURCE_GYRO:
 					if(length == GYRO_PAYLOAD_LENGTH)
 					{
-						int x, y, z;
 						x = (packet[X_INDEX_LSB] & 0x00FF) | (packet[X_INDEX_MSB] << 8);
 						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
 						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
+						//kinematicsEstimator.registerGyroValues(x, y, z, timestamp);
 						Log.d(TAG, String.format("Gyroscope: X: %d Y: %d Z: %d", x, y, z));
 					}
 					break;
 				case DATA_SOURCE_MAG:
 					if(length == MAG_PAYLOAD_LENGTH)
 					{
-						int x, y, z;
 						x = (packet[X_INDEX_LSB] & 0x00FF) | (packet[X_INDEX_MSB] << 8);
 						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
 						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
+						//kinematicsEstimator.registerMagValues(x, y, z, timestamp);
 						Log.d(TAG, String.format("Magnetometer: X: %d Y: %d Z: %d", x, y, z));
 					}
 					break;
