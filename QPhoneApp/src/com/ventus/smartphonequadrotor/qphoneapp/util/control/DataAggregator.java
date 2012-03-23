@@ -9,6 +9,7 @@ import android.util.Log;
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCallback;
+import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommands;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpHandlers;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpParser;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
@@ -40,7 +41,7 @@ public class DataAggregator {
 		displacementError = SimpleMatrix.zeros(3, 1);
 		this.packetHandlers = new QcfpHandlers();
 		bluetoothDataParser =  new QcfpParser(QcfpParser.QCFP_MAX_PACKET_SIZE, packetHandlers);
-		packetHandlers.registerHandler(QcfpHandlers.QCFP_ASYNC_DATA, asyncDataCallback);
+		packetHandlers.registerHandler(QcfpCommands.QCFP_ASYNC_DATA, asyncDataCallback);
 	}
 	
 	/**
