@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.BluetoothManager;
+import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommunication;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.ControlLoop;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.DataAggregator;
 import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager;
@@ -30,6 +31,7 @@ public class MainService extends Service {
 	private BluetoothManager bluetoothManager;
 	private DataAggregator dataAggregator;
 	private ControlLoop controlLoop;
+	private QcfpCommunication qcfpCommunication;
 
 	@Override
 	public void onCreate() {
@@ -38,6 +40,7 @@ public class MainService extends Service {
 		bluetoothManager = new BluetoothManager(this);
 		intentHandler = new IntentHandler(this);
 		dataAggregator = new DataAggregator(this);
+		qcfpCommunication = new QcfpCommunication(bluetoothManager);
 	}
 	
 	@Override
@@ -56,6 +59,10 @@ public class MainService extends Service {
 	
 	public DataAggregator getDataAggregator() {
 		return this.dataAggregator;
+	}
+	
+	public QcfpCommunication getQcfpCommunication() {
+		return this.qcfpCommunication;
 	}
 
 	/**
@@ -87,19 +94,6 @@ public class MainService extends Service {
 		} catch (Exception e) {
 			Log.e(TAG, "Message Could not be sent: " + e.getMessage());
 			Toast.makeText(this, "Message could not be sent", Toast.LENGTH_SHORT).show();
-		}
-	}
-	
-	/**
-	 * This uses the {@link BluetoothManager} to send a message to the QCB
-	 * over bluetooth.
-	 * @param message
-	 */
-	public void sendBluetoothMessage(byte[] message) {
-		try {
-			this.bluetoothManager.write(message);
-		} catch (IOException ioEx) {
-			Log.e(TAG, "Could not send message", ioEx);
 		}
 	}
 	
