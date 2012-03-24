@@ -69,6 +69,11 @@ public class QcfpCommunicationTest extends TestCase {
 		byte[] expected6 = {0, 6, 1, 1, 1, 1, 1, 0};
 		byte[] result6 = QcfpCommunication.encodeData(data6, data6.length);
 		Assert.assertArrayEquals(expected6, result6);
+		
+		byte[] data7 = {0x40, 1};
+		byte[] expected7 = {0, 3, 0x40, 1, 0};
+		byte[] result7 = QcfpCommunication.encodeData(data7, data7.length);
+		Assert.assertArrayEquals(expected7, result7);
 	}
 
 }

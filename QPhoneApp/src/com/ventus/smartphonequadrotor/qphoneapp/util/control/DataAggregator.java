@@ -26,7 +26,6 @@ public class DataAggregator {
 	private MainService owner;
 	private QcfpHandlers packetHandlers;
 	private QcfpParser bluetoothDataParser;
-	//private KinematicsEstimator kinematicsEstimator;
 	
 	/**
 	 * This represents the current error in displacement. Thus, it is desiredDisplacement - currentDisplacement.
@@ -41,8 +40,9 @@ public class DataAggregator {
 		displacementError = SimpleMatrix.zeros(3, 1);
 		this.packetHandlers = new QcfpHandlers();
 		bluetoothDataParser =  new QcfpParser(QcfpParser.QCFP_MAX_PACKET_SIZE, packetHandlers);
-		//kinematicsEstimator = new KinematicsEstimator();
 		packetHandlers.registerHandler(QcfpCommands.QCFP_ASYNC_DATA, asyncDataCallback);
+		packetHandlers.registerHandler(QcfpCommands.QCFP_FLIGHT_MODE, flightModeCallback);
+		packetHandlers.registerHandler(QcfpCommands.QCFP_CALIBRATE_QUADROTOR, calibrationStatusCallback);
 	}
 	
 	/**
@@ -76,14 +76,6 @@ public class DataAggregator {
 	}
 	
 	/**
-	 * This method is called once the bluetooth connection is setup and the thread for 
-	 * listening to messages can start.
-	 */
-	public void startListening() {
-		owner.getBluetoothManager().bluetoothReader.start();
-	}
-	
-	/**
 	 * The bluetooth reader thread will use this handler to send messages to the service
 	 * thread. These messages will contain the object parsed from the bluetooth strings.
 	 */
@@ -93,6 +85,46 @@ public class DataAggregator {
 			int length = msg.arg1;
 			if (length > 0) {
 				bluetoothDataParser.addData((byte[])msg.obj, length);
+			}
+		}
+	};
+	
+	/**
+	 * This callback receives data from the bluetooth. The data is in the form of a 
+	 * byte array and needs to be parsed according to the QCFB protocol guide in the
+	 * project documents folder on google docs.
+	 * The data contains information regarding whether the QCB has entered flightmode
+	 * (armed state) or not.
+	 */
+	private QcfpCallback flightModeCallback = new QcfpCallback() {
+		private static final int CMD41_ENABLE_INDEX = 1;
+		
+		@Override
+		public void run(byte[] packet, int length) {
+			//check if the length of the command is appropriate. 
+			if (length == 2) {
+				int flightMode = packet[CMD41_ENABLE_INDEX];
+				owner.flightModeReceivedfromQcb(flightMode);
+			}
+		}
+	};
+	
+	/**
+	 * This callback receives data from the bluetooth. The data is in the form of a 
+	 * byte array and needs to be parsed according to the QCFB protocol guide in the
+	 * project documents folder on google docs.
+	 * The data contains information regarding whether the QCB has entered calibration mode
+	 * or not.
+	 */
+	private QcfpCallback calibrationStatusCallback = new QcfpCallback() {
+		private static final int CMD40_ENABLE_INDEX = 1;
+		
+		@Override
+		public void run(byte[] packet, int length) {
+			//check if the length of the command is appropriate. 
+			if (length == 2) {
+				int calibrationStatus = packet[CMD40_ENABLE_INDEX];
+				owner.calibrationStatusReceivedfromQcb(calibrationStatus);
 			}
 		}
 	};

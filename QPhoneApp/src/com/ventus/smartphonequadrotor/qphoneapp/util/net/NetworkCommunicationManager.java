@@ -3,6 +3,7 @@ package com.ventus.smartphonequadrotor.qphoneapp.util.net;
 import com.google.gson.Gson;
 import com.ventus.smartphonequadrotor.qphoneapp.activities.XmppConnectionActivity;
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
+import com.ventus.smartphonequadrotor.qphoneapp.services.MainService.MainServiceHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Responses;
@@ -11,7 +12,9 @@ import com.ventus.smartphonequadrotor.qphoneapp.util.json.TriAxisSensorResponse;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Message;
 import android.util.Log;
+import android.widget.Toast;
 
 /**
  * This class provides a common interface for using the network communication to interface with
@@ -125,21 +128,24 @@ public class NetworkCommunicationManager {
 	public class NcmOnMessageListener extends OnMessageListener {
 		@Override
 		public void onMessage(String message) {
-			Log.d(TAG, "Message from controller: " + message);
 			//attempt to decode the message
 			Envelope envelope = gson.fromJson(message, Envelope.class);
-			if (envelope.getCommands().getMoveCommandArray().length > 0) {
-				owner.getDataAggregator().processMoveCommand(envelope.getCommands().getMoveCommandArray());
-			} else if (!envelope.getCommands().getSystemState().equals("")) {
-				if (envelope.getCommands().getSystemState().equals(SystemState.ARMED.toString())) {
-					//the user wishes to arm the quadrotor
-					//TODO
-				} else if (envelope.getCommands().getSystemState().equals(SystemState.CALIBRATING)) {
-					//the user wishes to calibrate the quadrotor
-					//TODO
+			if (envelope != null) {
+				if (envelope.getCommands() != null) {
+					if (envelope.getCommands().getMoveCommandArray() != null 
+							&& envelope.getCommands().getMoveCommandArray().length > 0) {
+						owner.getDataAggregator().processMoveCommand(envelope.getCommands().getMoveCommandArray());
+					} else if (!envelope.getCommands().getSystemState().equals("")) {
+						if (envelope.getCommands().getSystemState().equals(SystemState.ARMED.toString())) {
+							//the user wishes to arm the quadrotor
+							owner.sendFlightModeToQcb(true);
+						} else if (envelope.getCommands().getSystemState().equals(SystemState.CALIBRATING.toString())) {
+							//the user wishes to calibrate the quadrotor
+							owner.sendCalibrateSignalToQcb(true);
+						}
+					}
 				}
 			}
-			Log.d(TAG, envelope.toString());
 		}		
 	}
 	
@@ -171,7 +177,7 @@ public class NetworkCommunicationManager {
 					sendConnectionFailure();
 				}
 			}
-		}).start();
+		}, "XmppConnectThread").start();
 	}
 	
 	/**
@@ -191,6 +197,18 @@ public class NetworkCommunicationManager {
 			//TODO directSocketClient.sendMessage(message);
 		}
 	}
+
+	/**
+	 * This method is used by the {@link MainService} when it receives an intent (through {@link IntentHandler}).
+	 * This class is obviously used to send a message to the controller once a connection has been established.
+	 * It uses the best connection between the 2 options depending on the value of the preferredCommunicationMethod
+	 * variable.
+	 * @param message The message to be sent
+	 * @throws Exception If neither direct socket nor xmpp connections are setup
+	 */
+	public void sendNetworkMessage(Envelope envelope) throws Exception {
+		sendNetworkMessage(gson.toJson(envelope));
+	}
 	
 	private void sendConnectionFailure() {
 		Intent intent = new Intent(XmppConnectionActivity.NETWORK_CONNECTION_STATUS_UPDATE);
@@ -208,5 +226,29 @@ public class NetworkCommunicationManager {
 			XmppConnectionActivity.NETWORK_STATUS_CONNECTED
 		);
 		owner.sendBroadcast(intent);
+	}
+	
+	/**
+	 * Sends the system state to the controller over the network.
+	 * @param state the state of the quadrotor.
+	 */
+	public void sendSystemState(final SystemState state) {
+		new Thread(new Runnable(){
+			public void run() {
+				Responses responses = new Responses(null, null, null, null, null, state.toString());
+				Envelope envelope = new Envelope(null, null, responses);
+				try {
+					sendNetworkMessage(envelope);
+				} catch (Exception e) {
+					String errorStr = "Network failure: could not send system status";
+					Message msg = new Message();
+					msg.what = MainServiceHandler.TOAST_MESSAGE;
+					msg.obj = errorStr;
+					msg.arg1 = Toast.LENGTH_LONG;
+					owner.handler.sendMessage(msg);
+					Log.e(TAG, errorStr, e);
+				}
+			}
+		}, "SystemStatusNetworkThread").start();
 	}
 }

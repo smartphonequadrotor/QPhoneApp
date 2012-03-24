@@ -4,9 +4,11 @@ import java.io.IOException;
 
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.BluetoothManager;
+import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommands;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommunication;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.ControlLoop;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.DataAggregator;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.SystemState;
 import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager;
 
 import android.app.Service;
@@ -32,6 +34,8 @@ public class MainService extends Service {
 	private DataAggregator dataAggregator;
 	private ControlLoop controlLoop;
 	private QcfpCommunication qcfpCommunication;
+	
+	public MainServiceHandler handler;
 
 	@Override
 	public void onCreate() {
@@ -41,6 +45,7 @@ public class MainService extends Service {
 		intentHandler = new IntentHandler(this);
 		dataAggregator = new DataAggregator(this);
 		qcfpCommunication = new QcfpCommunication(bluetoothManager);
+		handler = new MainServiceHandler();
 	}
 	
 	@Override
@@ -97,15 +102,98 @@ public class MainService extends Service {
 		}
 	}
 	
-	/**
-	 * For any components of {@link MainService} that run on a separate thread, this
-	 * is the primary means of communication. 
-	 */
-	public Handler handler = new Handler() {
+	public class MainServiceHandler extends Handler {
+		/**
+		 * The toast cannot be called safely from other threads. For this, they have
+		 * to used this handler. The {@link Message#what} will have to be this integer.
+		 * The {@link Message#obj} would have to be the message string and {@link Message#arg1}
+		 * will have to be the the duration of the toast.
+		 */
+		public static final int TOAST_MESSAGE = -1;
+
 		@Override
 		public void handleMessage(Message msg) {
 			Log.i(TAG, "Message received in the main service: " + msg.obj.toString());
-			//TODO
+			if (msg.what == TOAST_MESSAGE) {
+				Toast.makeText(MainService.this, (String) msg.obj, msg.arg1).show();
+			}
 		}
-	};
+		
+	}
+	
+	/**
+	 * This method is to be called when a packet from the controller is received
+	 * that requires the quadrotor to be armed. This method starts a thread that calls
+	 * the {@link QcfpCommunication#sendFlightMode(Boolean)} method.
+	 * @param flightMode true if the quadrotor has to be armed, false otherwise
+	 */
+	public void sendFlightModeToQcb(boolean flightMode) {
+		new Thread (new Runnable(){
+			public void run() {
+				try {
+					qcfpCommunication.sendFlightMode(true);
+				} catch (Exception e) {
+					String errorStr = "Bluetooth failure: cannot send flight mode";
+					Message msg = new Message();
+					msg.what = MainServiceHandler.TOAST_MESSAGE;
+					msg.obj = errorStr;
+					msg.arg1 = Toast.LENGTH_LONG;
+					handler.sendMessage(msg);
+					Log.e(TAG, errorStr, e);
+				}
+			}
+		}, "FlightModeBluetoothThread").start();
+	}
+	
+	/**
+	 * This method is to be called when a packet from the controller is received that
+	 * requires the quadrotor to start calibrating. This method starts a thread that calls
+	 * the {@link QcfpCommunication#sendStartStopCalibration(Boolean)}
+	 */
+	public void sendCalibrateSignalToQcb(final boolean startStopCalibration) {
+		new Thread (new Runnable(){
+			public void run() {
+				try {
+					qcfpCommunication.sendStartStopCalibration(startStopCalibration);
+				} catch (Exception e) {
+					String errorStr = "Bluetooth failure: cannot send calibration command";
+					Message msg = new Message();
+					msg.what = MainServiceHandler.TOAST_MESSAGE;
+					msg.obj = errorStr;
+					msg.arg1 = Toast.LENGTH_LONG;
+					handler.sendMessage(msg);
+					Log.e(TAG, errorStr, e);
+				}
+			}
+		}, "SendCalibrationBluetoothThread").start();
+	}
+	
+	/**
+	 * When the quadrotor responds back with its current flight mode, this method is called.
+	 * If the flight mode is {@link QcfpCommands#QCFP_FLIGHT_MODE_PENDING}, then nothing is done.
+	 * Otherwise, the flight mode is reported back to the controller.
+	 * @param flightMode
+	 */
+	public void flightModeReceivedfromQcb(int flightMode) {
+		if (flightMode == QcfpCommands.QCFP_FLIGHT_MODE_ENABLE) {
+			networkCommunicationManager.sendSystemState(SystemState.ARMED);
+		} else if (flightMode == QcfpCommands.QCFP_FLIGHT_MODE_DISABLE) {
+			networkCommunicationManager.sendSystemState(SystemState.DISARMED);
+		}
+	}
+
+	/**
+	 * When the quadrotor responds back with its current calibration status, this method is called.
+	 * If the calibration status is {@link QcfpCommands#QCFP_CALIBRATE_QUADROTOR_CALIBRATING}, then nothing is done.
+	 * Otherwise, the calibration mode is reported back to the controller.
+	 * @param calibrationStatus
+	 */
+	public void calibrationStatusReceivedfromQcb(int calibrationStatus) {
+		if (calibrationStatus == QcfpCommands.QCFP_CALIBRATE_QUADROTOR_CALIBRATED) {
+			networkCommunicationManager.sendSystemState(SystemState.CALIBRATED);
+		} else if (calibrationStatus == QcfpCommands.QCFP_CALIBRATE_QUADROTOR_UNABLE_TO_CALIBRATE
+				|| calibrationStatus == QcfpCommands.QCFP_CALIBRATE_QUADROTOR_UNCALIBRATED) {
+			networkCommunicationManager.sendSystemState(SystemState.UNABLE_TO_CALIBRATE);
+		}
+	}
 }

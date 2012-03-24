@@ -72,18 +72,19 @@ public class BluetoothManager {
 						}
 						tempIn = socket.getInputStream();
 						tempOut = socket.getOutputStream();
+						
+						synchronized(inputStreamLock) {
+							inputStream = tempIn;
+						}
+						synchronized(outputStreamLock) {
+							outputStream = tempOut;
+						}
 						sendConnectionSuccess();
 					} catch (IOException ex) {
 						sendConnectionFailure();
 					}
-					synchronized(inputStreamLock) {
-						inputStream = tempIn;
-					}
-					synchronized(outputStreamLock) {
-						outputStream = tempOut;
-					}
 				}
-			}).start();
+			}, "BluetoothConnectionThread").start();
 		} catch (Exception ex) {
 			sendConnectionFailure();
 		}
@@ -105,7 +106,7 @@ public class BluetoothManager {
 			BluetoothConnectionActivity.BLUETOOTH_STATUS_CONNECTED
 		);
 		owner.sendBroadcast(intent);
-		owner.getDataAggregator().startListening();
+		bluetoothReader.start();
 	}
 	
 	/**
@@ -125,7 +126,7 @@ public class BluetoothManager {
 	 * This thread is an infinite loop that contains a blocking call to the
 	 * bluetooth input stream. 
 	 */
-	public Thread bluetoothReader = new Thread() {
+	public Thread bluetoothReader = new Thread("BluetoothReaderThread") {
 		public static final int BUFFER_SIZE = 2*QcfpParser.QCFP_MAX_PACKET_SIZE;
 		
 		@Override
@@ -134,6 +135,14 @@ public class BluetoothManager {
 			
 			while (true) {
 				try {
+					if (owner.getBluetoothManager().getInputStream() == null) {
+						try {
+							Thread.sleep(200);
+						} catch (InterruptedException e) {
+							//whatever
+						}
+						continue;
+					}
 					//the following is a blocking call.
 					int length = owner.getBluetoothManager().getInputStream().read(buffer);
 					//send this data to the service thread

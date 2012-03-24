@@ -26,5 +26,10 @@ public enum SystemState {
 	/**
 	 * This indicates that the quadrotor is done calibration.
 	 */
-	CALIBRATED;
+	CALIBRATED,
+	
+	/**
+	 * This indicates that the quadrotor could not calibrate.
+	 */
+	UNABLE_TO_CALIBRATE;
 }

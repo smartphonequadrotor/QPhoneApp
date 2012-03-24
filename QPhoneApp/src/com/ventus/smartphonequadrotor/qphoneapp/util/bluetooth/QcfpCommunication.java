@@ -166,7 +166,7 @@ public class QcfpCommunication {
 			encodedData[encodedDataIndex++] = 1;
 		}
 
-		encodedData[++encodedDataIndex] = QcfpParser.COBS_TERM_BYTE;
+		encodedData[encodedDataIndex++] = QcfpParser.COBS_TERM_BYTE;
 
 		byte[] returnArray = new byte[encodedDataIndex];
 		System.arraycopy(encodedData, 0, returnArray, 0, encodedDataIndex);
