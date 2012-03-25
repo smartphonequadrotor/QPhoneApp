@@ -235,7 +235,7 @@ public class NetworkCommunicationManager {
 	public void sendSystemState(final SystemState state) {
 		new Thread(new Runnable(){
 			public void run() {
-				Responses responses = new Responses(null, null, null, null, null, state.toString());
+				Responses responses = new Responses(null, null, null, null, null, state.toString(), null);
 				Envelope envelope = new Envelope(null, null, responses);
 				try {
 					sendNetworkMessage(envelope);
