@@ -75,5 +75,22 @@ public class QcfpCommunicationTest extends TestCase {
 		byte[] result7 = QcfpCommunication.encodeData(data7, data7.length);
 		Assert.assertArrayEquals(expected7, result7);
 	}
+	
+	/**
+	 * Test method for {@link com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommunication#decodeFloat(byte[], int)}.
+	 */
+	public void testDecodeFloat()
+	{
+		Float num = (float) 1.3;
+		byte[] buffer = new byte[4];
+		int floatAsInt = Float.floatToIntBits(num);
+		buffer[0] = (byte) ((floatAsInt & 0x000000FF) >> 0);
+		buffer[1] = (byte) ((floatAsInt & 0x0000FF00) >> 8);
+		buffer[2] = (byte) ((floatAsInt & 0x00FF0000) >> 16);
+		buffer[3] = (byte) ((floatAsInt & 0xFF000000) >> 24);
+		
+		float result = QcfpCommunication.decodeFloat(buffer, 0);
+		assertEquals(num, result, 0.0);
+	}
 
 }

@@ -21,6 +21,17 @@ public class QcfpCommunication {
 		this.bluetoothManager = bluetoothManager;
 	}
 	
+	public static float decodeFloat(byte[] buffer, int index)
+	{
+		int temp = buffer[0];
+		for(int i = 1; i < 4; i++)
+		{
+			int toOr = (buffer[i] << (8*i)) & (0x00FF << (8*i));
+			temp |= toOr;
+		}
+		return Float.intBitsToFloat(temp);
+	}
+	
 	/**
 	 * Sends raw motor speeds to the QCB. Motor values will only take effect if
 	 * the QCB is in flight mode.

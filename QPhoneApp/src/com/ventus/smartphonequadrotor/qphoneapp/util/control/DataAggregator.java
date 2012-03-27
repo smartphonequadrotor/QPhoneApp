@@ -10,6 +10,7 @@ import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCallback;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommands;
+import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommunication;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpHandlers;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpParser;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.MoveCommand;
@@ -139,10 +140,12 @@ public class DataAggregator {
 		private static final int DATA_SOURCE_ACCEL = 0x01;
 		private static final int DATA_SOURCE_GYRO = 0x02;
 		private static final int DATA_SOURCE_MAG = 0x03;
+		private static final int DATA_SOURCE_KIN = 0x06;
 		
 		private static final int ACCEL_PAYLOAD_LENGTH = 12;
 		private static final int GYRO_PAYLOAD_LENGTH = 12;
 		private static final int MAG_PAYLOAD_LENGTH = 12;
+		private static final int KIN_PAYLOAD_LENGTH = 18;
 		
 		private static final int TIMESTAMP_START_INDEX = 2;
 		
@@ -152,6 +155,10 @@ public class DataAggregator {
 		private static final int Y_INDEX_MSB = 9;
 		private static final int Z_INDEX_LSB = 10;
 		private static final int Z_INDEX_MSB = 11;
+		
+		private static final int ROLL_START_INDEX = 6;
+		private static final int PITCH_START_INDEX = 10;
+		private static final int YAW_START_INDEX = 14;
 		
 		@Override
 		public void run(byte[] packet, int length) {
@@ -201,6 +208,21 @@ public class DataAggregator {
 						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
 						//kinematicsEstimator.registerMagValues(x, y, z, timestamp);
 						Log.d(TAG, String.format("Magnetometer: X: %d Y: %d Z: %d", x, y, z));
+					}
+					break;
+				case DATA_SOURCE_KIN:
+					if(length == KIN_PAYLOAD_LENGTH)
+					{
+						float yaw, pitch, roll;
+						// Assuming roll, pitch, yaw corresponds to x, y, z and that that is
+						// the order the values are sent in.
+						// Kinematics angles are in radians.
+						yaw = QcfpCommunication.decodeFloat(packet, ROLL_START_INDEX);
+						pitch = QcfpCommunication.decodeFloat(packet, PITCH_START_INDEX);
+						roll = QcfpCommunication.decodeFloat(packet, YAW_START_INDEX);
+						
+						Log.d(TAG, String.format("Kinematics: X: %d Y: %d Z: %d", yaw, pitch, roll));
+						// TODO: Abhin: Use these values to update controls
 					}
 					break;
 				default:
