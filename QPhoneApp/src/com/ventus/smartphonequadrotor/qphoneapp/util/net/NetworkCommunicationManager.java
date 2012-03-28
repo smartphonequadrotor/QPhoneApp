@@ -12,6 +12,9 @@ import com.ventus.smartphonequadrotor.qphoneapp.util.json.TriAxisSensorResponse;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
@@ -33,6 +36,7 @@ public class NetworkCommunicationManager {
 	
 	private NcmOnMessageListener onMessageListener;
 	private Gson gson;
+	private NetworkCommunicationLooper networkCommunicationLooper;
 	
 	private String xmppOwnJid;
 	private String xmppOwnPassword;
@@ -49,6 +53,8 @@ public class NetworkCommunicationManager {
 		this.owner = owner;
 		onMessageListener = new NcmOnMessageListener();
 		gson = new Gson();
+		networkCommunicationLooper = new NetworkCommunicationLooper();
+		networkCommunicationLooper.start();
 	}
 	
 	public NetworkCommunicationManager (XmppClient xmppClient, MainService owner) {
@@ -59,6 +65,15 @@ public class NetworkCommunicationManager {
 	public NetworkCommunicationManager (DirectSocketClient directSocketClient, MainService owner) {
 		this(owner);
 		this.directSocketClient = directSocketClient;
+	}
+	
+	/**
+	 * This method should be called by the {@link MainService} when it is ending. This method will
+	 * stop the networkCommunicationHandler;
+	 */
+	public void cleanup() {
+		if (networkCommunicationLooper.handler != null && networkCommunicationLooper.handler.getLooper() != null)
+			networkCommunicationLooper.handler.getLooper().quit();
 	}
 	
 	public void setXmppClient (XmppClient xmppClient) {
@@ -167,7 +182,7 @@ public class NetworkCommunicationManager {
 		this.xmppOwnResource = intent.getStringExtra(IntentHandler.ActionExtras.XMPP_OWN_RESOURCE.extra);
 		this.xmppTargetJid = intent.getStringExtra(IntentHandler.ActionExtras.XMPP_TARGET_JID.extra);
 		this.preferredCommunicationMethod = CommunicationMethods.XMPP;
-		new Thread(new Runnable(){
+		networkCommunicationLooper.handler.post(new Runnable(){
 			public void run() {
 				try {
 					connect();
@@ -177,7 +192,7 @@ public class NetworkCommunicationManager {
 					sendConnectionFailure();
 				}
 			}
-		}, "XmppConnectThread").start();
+		});
 	}
 	
 	/**
@@ -233,7 +248,7 @@ public class NetworkCommunicationManager {
 	 * @param state the state of the quadrotor.
 	 */
 	public void sendSystemState(final SystemState state) {
-		new Thread(new Runnable(){
+		networkCommunicationLooper.handler.post(new Runnable(){
 			public void run() {
 				Responses responses = new Responses(null, null, null, null, null, state.toString(), null);
 				Envelope envelope = new Envelope(null, null, responses);
@@ -249,6 +264,20 @@ public class NetworkCommunicationManager {
 					Log.e(TAG, errorStr, e);
 				}
 			}
-		}, "SystemStatusNetworkThread").start();
+		});
+	}
+	
+	public class NetworkCommunicationLooper extends Thread {
+		public Handler handler = new Handler();
+		
+		public NetworkCommunicationLooper() {
+			super("NetworkCommunicationLooper");
+		}
+		
+		public void run() {
+			//setup looper stuff
+			Looper.prepare();
+			Looper.loop();
+		}
 	}
 }

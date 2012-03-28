@@ -16,6 +16,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 import android.widget.Toast;
@@ -33,6 +34,7 @@ public class MainService extends Service {
 	private BluetoothManager bluetoothManager;
 	private DataAggregator dataAggregator;
 	private ControlLoop controlLoop;
+	private Looper controlLooper;
 	private QcfpCommunication qcfpCommunication;
 	
 	public MainServiceHandler handler;
@@ -46,12 +48,14 @@ public class MainService extends Service {
 		dataAggregator = new DataAggregator(this);
 		qcfpCommunication = new QcfpCommunication(bluetoothManager);
 		handler = new MainServiceHandler();
+		controlLoop = new ControlLoop(handler);
 	}
-	
+
 	@Override
 	public void onStart(Intent intent, int startId) {
 		super.onStart(intent, startId);
 		declareIntentFilters();
+		controlLoop.start();
 	}
 
 	public NetworkCommunicationManager getNetworkCommunicationManager() {
