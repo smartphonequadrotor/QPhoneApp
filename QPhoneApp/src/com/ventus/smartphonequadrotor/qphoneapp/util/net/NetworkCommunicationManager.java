@@ -45,12 +45,21 @@ public class NetworkCommunicationManager {
 	
 	/**
 	 * This is the number of kinematics entries that will be cached in this class before
-	 * being sent through the network.
+	 * an attempt to send this over the network is made.
 	 */
-	private static final int KINEMATICS_MAX_BACKLOG = 10;
-	
+	private static final int KINEMATICS_CACHE_SEND_THRESHOLD = 10;
+	/**
+	 * This is the number of kinematics entries that can be cached by the kinematicsCache
+	 * before an overflow occurs.
+	 */
+	private static final int KINEMATICS_CACHE_LIMIT = 2 * KINEMATICS_CACHE_SEND_THRESHOLD;
+	/**
+	 * The index where the next kinematics entry will be inserted into the cache.
+	 */
 	private int kinematicsBacklog = 0;
-	
+	/**
+	 * An array of kinematics responses to slow down the rate at which network requests are made.
+	 */
 	private TriAxisSensorResponse[] kinematicsCache;
 	
 	/**
@@ -63,7 +72,7 @@ public class NetworkCommunicationManager {
 		this.owner = owner;
 		onMessageListener = new NcmOnMessageListener();
 		gson = new Gson();
-		kinematicsCache = new TriAxisSensorResponse[KINEMATICS_MAX_BACKLOG];
+		kinematicsCache = new TriAxisSensorResponse[KINEMATICS_CACHE_SEND_THRESHOLD];
 		networkCommunicationLooper = new NetworkCommunicationLooper();
 		networkCommunicationLooper.start();
 	}
@@ -281,14 +290,16 @@ public class NetworkCommunicationManager {
 	public void sendKinematicsData(final long timestamp, final float roll, final float pitch, final float yaw) {
 		networkCommunicationLooper.handler.post(new Runnable() {
 			public void run() {
-				assert(kinematicsBacklog < KINEMATICS_MAX_BACKLOG);
+				assert(kinematicsBacklog < KINEMATICS_CACHE_LIMIT);
 				kinematicsCache[kinematicsBacklog] = new TriAxisSensorResponse(timestamp, roll, pitch, yaw);
 				kinematicsBacklog++;
-				if (kinematicsBacklog == KINEMATICS_MAX_BACKLOG) {
+				if (kinematicsBacklog >= KINEMATICS_CACHE_SEND_THRESHOLD) {
 					Responses responses = new Responses(kinematicsCache, null, null, null, null, null, null, null);
 					Envelope envelope = new Envelope(null, null, responses);
 					try {
 						sendNetworkMessage(envelope);
+						//if the send is successful, then the cache should be cleared
+						kinematicsBacklog = 0;
 					} catch (Exception e) {
 						String errorStr = "Network failure: could not send system status";
 						Message msg = new Message();
@@ -297,9 +308,10 @@ public class NetworkCommunicationManager {
 						msg.arg1 = Toast.LENGTH_LONG;
 						owner.handler.sendMessage(msg);
 						Log.e(TAG, errorStr, e);
-					} finally {
-						//regardless of whether the send method succeeded, we have to reset the kinematics cache
-						kinematicsBacklog = 0;
+						//if the kinematicsCache is completely full, then this is a cache overflow
+						//empty the cache
+						if (kinematicsBacklog == KINEMATICS_CACHE_LIMIT)
+							kinematicsBacklog = 0;
 					}
 				}
 			}
