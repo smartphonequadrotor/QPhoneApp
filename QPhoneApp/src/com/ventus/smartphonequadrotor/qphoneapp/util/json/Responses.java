@@ -1,6 +1,7 @@
 package com.ventus.smartphonequadrotor.qphoneapp.util.json;
 
 public class Responses {
+	private TriAxisSensorResponse[] Orientation;
 	private TriAxisSensorResponse[] Gyro;
 	private TriAxisSensorResponse[] Accel;
 	private CameraResponse[] Camera;
@@ -9,13 +10,15 @@ public class Responses {
 	private String SystemState;
 	private String Debug;
 	
-	public Responses(	TriAxisSensorResponse[] gyro,
+	public Responses(	TriAxisSensorResponse[] orientation,
+						TriAxisSensorResponse[] gyro,
 						TriAxisSensorResponse[] accel, 
 						CameraResponse[] camera,
 						BatteryResponse[] battery, 
 						GpsResponse[] gps,
 						String systemState,
 						String debug) {
+		Orientation = orientation;
 		Gyro = gyro;
 		Accel = accel;
 		Camera = camera;
@@ -25,6 +28,9 @@ public class Responses {
 		Debug = debug;
 	}
 	
+	public TriAxisSensorResponse[] getOrientation() {
+		return Orientation;
+	}
 	public TriAxisSensorResponse[] getGyro() {
 		return Gyro;
 	}
@@ -50,14 +56,15 @@ public class Responses {
 	@Override
 	public String toString() {
 		return String.format(
-			"Gyro: %1$s\nAccel: %2$s\nCamera: %3$s\nBattery: %4$s\nGps: %5$s\nSystemState: %6$s\nDebug: %7$s\n",
+			"Orientation: %8$s\nGyro: %1$s\nAccel: %2$s\nCamera: %3$s\nBattery: %4$s\nGps: %5$s\nSystemState: %6$s\nDebug: %7$s\n",
 			Gyro.toString(),
 			Accel.toString(),
 			Camera.toString(),
 			Battery.toString(),
 			GPS.toString(),
 			SystemState,
-			Debug
+			Debug,
+			Orientation.toString()
 		);
 	}
 }

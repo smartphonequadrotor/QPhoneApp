@@ -2,6 +2,8 @@ package com.ventus.smartphonequadrotor.qphoneapp.util.control;
 
 import java.io.IOException;
 
+import org.jivesoftware.smack.packet.PacketExtension;
+
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -28,17 +30,48 @@ public class DataAggregator {
 	private QcfpHandlers packetHandlers;
 	private QcfpParser bluetoothDataParser;
 	
-	/**
-	 * This represents the current error in displacement. Thus, it is desiredDisplacement - currentDisplacement.
-	 * When the controller sends a move command, its displacement is added to this. When the 
-	 * bluetooth sends acceleration, it is used to calculate the actual deltaDisplacement of the 
-	 * quadrotor. That value is subtracted from this desplacementError.
+	/*
+	 * variables that will be used to generate the error matrix for the control loop
 	 */
-	private SimpleMatrix displacementError;
+	
+	/**
+	 * A row matrix containing the last recorded height, roll, pitch and yaw values.
+	 */
+	private double[] historicHrpy;
+	/**
+	 * A 2-D matrix containing the last 3 recorded height, roll, pitch and yaw values.
+	 * This is supposed to be a 3-row and 4-column matrix.
+	 */
+	private double[][] desiredHrpyHistory;
+	/**
+	 * The sum of the absolute motor speeds from the previous update.
+	 */
+	private double netPreviousRotorSpeed;
+	/**
+	 * The timestamps from the last 2 updates. 
+	 * Index 0 contains the timestamp from the last update and index 1 contains the timestamp from 
+	 * the update before that.
+	 */
+	private long[] historicTimestamps;
+	
+	private static final int CURRENT_INDEX = 0;
+	private static final int LAST_UPDATE_INDEX = 1;
+	private static final int PREVIOUS_TO_LAST_UPDATE_INDEX = 2;
+	private static final int HEIGHT_INDEX = 0;
+	private static final int ROLL_INDEX = 1;
+	private static final int PITCH_INDEX = 2;
+	private static final int YAW_INDEX = 3;
 	
 	public DataAggregator(MainService owner) {
 		this.owner = owner;
-		displacementError = SimpleMatrix.zeros(3, 1);
+		this.historicHrpy = new double[4];
+		this.desiredHrpyHistory = new double[][]{
+			{0, 0, 0, 0}, 
+			{0, 0, 0, 0}, 
+			{0, 0, 0, 0}
+		};
+		this.netPreviousRotorSpeed = 0;
+		this.historicTimestamps = new long[]{-1, -1};
 		this.packetHandlers = new QcfpHandlers();
 		bluetoothDataParser =  new QcfpParser(QcfpParser.QCFP_MAX_PACKET_SIZE, packetHandlers);
 		packetHandlers.registerHandler(QcfpCommands.QCFP_ASYNC_DATA, asyncDataCallback);
@@ -74,6 +107,95 @@ public class DataAggregator {
 				//into account the speed and time while deciding the angles for the quadrotor.
 			}
 		}
+	}
+
+	/**
+	 * This method uses the old values of the height, roll, pitch, yaw and their corresponding
+	 * desired values in conjunction with the current values of height, roll, pitch and yaw to calculate
+	 * the error matrix for the {@link ControlLoop#triggerCmacUpdate(SimpleMatrix)} method.
+	 * @param timestamp The timestamp when the sensor update was received.
+	 * @param height The current height of the quadrotor
+	 * @param roll The current roll angle of the quadrotor
+	 * @param pitch The current pitch angle of the quadrotor
+	 * @param yaw The current yaw angle of the quadrotor
+	 */
+	private void calculateErrorAndUpdateCmac(long timestamp, int height, float roll, float pitch, float yaw) {
+		if (historicTimestamps[CURRENT_INDEX] != -1 && historicTimestamps[LAST_UPDATE_INDEX] != -1) {
+			double lastTimestampInterval = timestamp - historicTimestamps[LAST_UPDATE_INDEX];
+			double previousToLastTimestampInterval = historicTimestamps[CURRENT_INDEX] - historicTimestamps[LAST_UPDATE_INDEX];
+			//if this is not the first reading then,
+			double[] errors = new double[CmacInputParam.count];
+			errors[CmacInputParam.HEIGHT_ERROR.index] = height - desiredHrpyHistory[CURRENT_INDEX][HEIGHT_INDEX];
+			errors[CmacInputParam.ROLL_ERROR.index] = roll - desiredHrpyHistory[CURRENT_INDEX][ROLL_INDEX];
+			errors[CmacInputParam.PITCH_ERROR.index] = pitch - desiredHrpyHistory[CURRENT_INDEX][PITCH_INDEX];
+			errors[CmacInputParam.YAW_ERROR.index] = yaw - desiredHrpyHistory[CURRENT_INDEX][YAW_INDEX];
+			errors[CmacInputParam.HEIGHT_ERROR_DERIVATIVE.index] = (yaw - historicHrpy[HEIGHT_INDEX]
+					+ desiredHrpyHistory[CURRENT_INDEX][HEIGHT_INDEX] - desiredHrpyHistory[LAST_UPDATE_INDEX][HEIGHT_INDEX])
+					/ lastTimestampInterval;
+			errors[CmacInputParam.ROLL_ERROR_DERIVATIVE.index] = (yaw - historicHrpy[ROLL_INDEX]
+					+ desiredHrpyHistory[CURRENT_INDEX][ROLL_INDEX] - desiredHrpyHistory[LAST_UPDATE_INDEX][ROLL_INDEX])
+					/ lastTimestampInterval;
+			errors[CmacInputParam.PITCH_ERROR_DERIVATIVE.index] = (yaw - historicHrpy[PITCH_INDEX]
+					+ desiredHrpyHistory[CURRENT_INDEX][PITCH_INDEX] - desiredHrpyHistory[LAST_UPDATE_INDEX][PITCH_INDEX])
+					/ lastTimestampInterval;
+			errors[CmacInputParam.YAW_ERROR_DERIVATIVE.index] = (yaw - historicHrpy[YAW_INDEX]
+					+ desiredHrpyHistory[CURRENT_INDEX][YAW_INDEX] - desiredHrpyHistory[LAST_UPDATE_INDEX][YAW_INDEX])
+					/ lastTimestampInterval;
+			errors[CmacInputParam.DESIRED_ROLL_DERIVATIVE.index] = (desiredHrpyHistory[CURRENT_INDEX][ROLL_INDEX] 
+					- desiredHrpyHistory[LAST_UPDATE_INDEX][ROLL_INDEX]) / lastTimestampInterval;
+			errors[CmacInputParam.DESIRED_PITCH_DERIVATIVE.index] = (desiredHrpyHistory[CURRENT_INDEX][PITCH_INDEX] 
+					- desiredHrpyHistory[LAST_UPDATE_INDEX][PITCH_INDEX]) / lastTimestampInterval;
+			errors[CmacInputParam.DESIRED_ROLL_SECOND_DERIVATIVE.index] = (desiredHrpyHistory[CURRENT_INDEX][ROLL_INDEX]
+					- (2*desiredHrpyHistory[LAST_UPDATE_INDEX][ROLL_INDEX]) + desiredHrpyHistory[PREVIOUS_TO_LAST_UPDATE_INDEX][ROLL_INDEX])
+					/ (lastTimestampInterval * previousToLastTimestampInterval);
+			errors[CmacInputParam.DESIRED_PITCH_SECOND_DERIVATIVE.index] = (desiredHrpyHistory[CURRENT_INDEX][PITCH_INDEX]
+					- (2*desiredHrpyHistory[LAST_UPDATE_INDEX][PITCH_INDEX]) + desiredHrpyHistory[PREVIOUS_TO_LAST_UPDATE_INDEX][PITCH_INDEX])
+					/ (lastTimestampInterval * previousToLastTimestampInterval);
+			errors[CmacInputParam.NET_PREVIOUS_ROTOR_SPEED.index] = netPreviousRotorSpeed;
+			Message msg = owner.getControlLoop().handler.obtainMessage(ControlLoop.CMAC_UPDATE_MESSAGE);
+			msg.obj = new SimpleMatrix(1, CmacInputParam.count, true, errors);
+			owner.getControlLoop().handler.sendMessage(msg);
+		}
+		timeshiftCurrentVariables(timestamp, height, roll, pitch, yaw);
+	}
+	
+	/**
+	 * This method moves the values in the state variables from the LAST_UPDATE_INDEX
+	 * position to the PREVIOUS_TO_LAST_UPDATE_INDEX position and updates the values at the
+	 * LAST_UPDATE_INDEX.
+	 * @param height
+	 * @param roll
+	 * @param pitch
+	 * @param yaw
+	 */
+	private void timeshiftCurrentVariables(long timestamp, int height, float roll, float pitch, float yaw) {
+		historicTimestamps[LAST_UPDATE_INDEX] = historicTimestamps[CURRENT_INDEX];
+		historicTimestamps[CURRENT_INDEX] = timestamp;
+		
+		historicHrpy[HEIGHT_INDEX] = height;
+		historicHrpy[ROLL_INDEX] = roll;
+		historicHrpy[PITCH_INDEX] = pitch;
+		historicHrpy[YAW_INDEX] = yaw;
+	}
+	
+	/**
+	 * This method moves the values in the desired variables from the LAST_UPDATE_INDEX
+	 * position to the PREVIOUS_TO_LAST_UPDATE_INDEX position and updates the values at the
+	 * LAST_UPDATE_INDEX.
+	 * @param height
+	 * @param roll
+	 * @param pitch
+	 * @param yaw
+	 */
+	private void timeshiftDesiredVariables(int height, float roll, float pitch, float yaw) {
+		for (int i = HEIGHT_INDEX; i < YAW_INDEX; i++) {
+			desiredHrpyHistory[PREVIOUS_TO_LAST_UPDATE_INDEX][i] = desiredHrpyHistory[LAST_UPDATE_INDEX][i];
+			desiredHrpyHistory[LAST_UPDATE_INDEX][i] = desiredHrpyHistory[CURRENT_INDEX][i];
+		}
+		desiredHrpyHistory[CURRENT_INDEX][HEIGHT_INDEX] = height;
+		desiredHrpyHistory[CURRENT_INDEX][ROLL_INDEX] = roll;
+		desiredHrpyHistory[CURRENT_INDEX][PITCH_INDEX] = pitch;
+		desiredHrpyHistory[CURRENT_INDEX][YAW_INDEX] = yaw;
 	}
 	
 	/**
@@ -175,8 +297,6 @@ public class DataAggregator {
 						((packet[TIMESTAMP_START_INDEX+2] << 16) & 0x0000FF0000) |
 						((packet[TIMESTAMP_START_INDEX+3] << 24) & 0x00FF000000);
 				
-				Log.d(TAG, String.format("Timestamp: %u", timestamp));
-				
 				// sensor data is signed
 				switch(packet[CMD10_DATA_SOURCE_INDEX])
 				{
@@ -187,7 +307,7 @@ public class DataAggregator {
 						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
 						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
 						//kinematicsEstimator.registerAccelValues(x, y, z, timestamp);
-						Log.d(TAG, String.format("Accelerometer: X: %d Y: %d Z: %d", x, y, z));
+						Log.d(TAG, String.format("Accelerometer: X: %f Y: %f Z: %f", x, y, z));
 					}
 					break;
 				case DATA_SOURCE_GYRO:
@@ -197,7 +317,7 @@ public class DataAggregator {
 						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
 						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
 						//kinematicsEstimator.registerGyroValues(x, y, z, timestamp);
-						Log.d(TAG, String.format("Gyroscope: X: %d Y: %d Z: %d", x, y, z));
+						Log.d(TAG, String.format("Gyroscope: X: %f Y: %f Z: %f", x, y, z));
 					}
 					break;
 				case DATA_SOURCE_MAG:
@@ -207,7 +327,7 @@ public class DataAggregator {
 						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
 						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
 						//kinematicsEstimator.registerMagValues(x, y, z, timestamp);
-						Log.d(TAG, String.format("Magnetometer: X: %d Y: %d Z: %d", x, y, z));
+						Log.d(TAG, String.format("Magnetometer: X: %f Y: %f Z: %f", x, y, z));
 					}
 					break;
 				case DATA_SOURCE_KIN:
@@ -221,8 +341,9 @@ public class DataAggregator {
 						pitch = QcfpCommunication.decodeFloat(packet, PITCH_START_INDEX);
 						roll = QcfpCommunication.decodeFloat(packet, YAW_START_INDEX);
 						
-						Log.d(TAG, String.format("Kinematics: X: %d Y: %d Z: %d", yaw, pitch, roll));
-						// TODO: Abhin: Use these values to update controls
+						//Log.d(TAG, String.format("Kinematics: X: %f Y: %f Z: %f", yaw*180/Math.PI, pitch*180/Math.PI, roll*180/Math.PI));
+						calculateErrorAndUpdateCmac(timestamp, 0, roll, pitch, yaw);
+						//owner.getNetworkCommunicationManager().sendKinematicsData(timestamp, roll, pitch, yaw);
 					}
 					break;
 				default:

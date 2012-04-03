@@ -81,7 +81,7 @@ public class QcfpCommunicationTest extends TestCase {
 	 */
 	public void testDecodeFloat()
 	{
-		Float num = (float) 1.3;
+		Float num = 1.3f;
 		byte[] buffer = new byte[4];
 		int floatAsInt = Float.floatToIntBits(num);
 		buffer[0] = (byte) ((floatAsInt & 0x000000FF) >> 0);
@@ -91,6 +91,10 @@ public class QcfpCommunicationTest extends TestCase {
 		
 		float result = QcfpCommunication.decodeFloat(buffer, 0);
 		assertEquals(num, result, 0.0);
+		
+		buffer = new byte[] {0x11, (byte) 0xfe, 0x20, (byte) 0xbe};
+		result = QcfpCommunication.decodeFloat(buffer, 0);
+		assertEquals(-0.15721919f, result);
 	}
 
 }

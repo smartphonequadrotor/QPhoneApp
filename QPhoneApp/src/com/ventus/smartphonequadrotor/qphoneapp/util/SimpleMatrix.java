@@ -157,6 +157,22 @@ public class SimpleMatrix extends SimpleBase<SimpleMatrix> {
 		}
 		return abs;
 	}
+
+	/**
+	 * This method can be used to change the values of the elements in the given
+	 * matrix using a double array.
+	 * @param values The desired values of the matrix. 
+	 * @throws IllegalArgumentException If the number of elements in the given array
+	 * is not the same as the number of elements in the current matrix, then this error
+	 * is thrown.
+	 */
+	public void set(double[] values) {
+		if (values.length != this.getNumElements())	
+			throw new IllegalArgumentException("The number of elements in values must match that of the matrix");
+		
+		for (int i = 0; i < values.length; i++)
+			this.set(i, values[i]);
+	}
 	
 	@Override
 	public boolean equals(Object o) {

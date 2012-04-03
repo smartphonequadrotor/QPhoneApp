@@ -3,6 +3,7 @@ package com.ventus.smartphonequadrotor.qphoneapp.services;
 import java.io.IOException;
 
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
+import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.BluetoothManager;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommands;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommunication;
@@ -28,15 +29,15 @@ import android.widget.Toast;
  *
  */
 public class MainService extends Service {
-	public static final String TAG = MainService.class.getName();
+	public static final String TAG = MainService.class.getSimpleName();
+	
 	private IntentHandler intentHandler;
 	private NetworkCommunicationManager networkCommunicationManager;
 	private BluetoothManager bluetoothManager;
 	private DataAggregator dataAggregator;
 	private ControlLoop controlLoop;
-	private Looper controlLooper;
 	private QcfpCommunication qcfpCommunication;
-	
+	private BluetoothCommunicationLooper btCommunicationLooper;
 	public MainServiceHandler handler;
 
 	@Override
@@ -49,6 +50,7 @@ public class MainService extends Service {
 		qcfpCommunication = new QcfpCommunication(bluetoothManager);
 		handler = new MainServiceHandler();
 		controlLoop = new ControlLoop(handler);
+		btCommunicationLooper = new BluetoothCommunicationLooper();
 	}
 
 	@Override
@@ -56,6 +58,7 @@ public class MainService extends Service {
 		super.onStart(intent, startId);
 		declareIntentFilters();
 		controlLoop.start();
+		btCommunicationLooper.start();
 	}
 
 	public NetworkCommunicationManager getNetworkCommunicationManager() {
@@ -72,6 +75,10 @@ public class MainService extends Service {
 	
 	public QcfpCommunication getQcfpCommunication() {
 		return this.qcfpCommunication;
+	}
+	
+	public ControlLoop getControlLoop() {
+		return this.controlLoop;
 	}
 
 	/**
@@ -114,12 +121,23 @@ public class MainService extends Service {
 		 * will have to be the the duration of the toast.
 		 */
 		public static final int TOAST_MESSAGE = -1;
+		/**
+		 * This is the message number used when the control loop has computed the desired motor speeds.
+		 */
+		public static final int MOTOR_SPEEDS_MESSAGE = 1;
 
 		@Override
 		public void handleMessage(Message msg) {
-			Log.i(TAG, "Message received in the main service: " + msg.obj.toString());
 			if (msg.what == TOAST_MESSAGE) {
+				if (msg.obj == null)
+					throw new IllegalArgumentException("Toast message missing");
 				Toast.makeText(MainService.this, (String) msg.obj, msg.arg1).show();
+			} else if (msg.what == MOTOR_SPEEDS_MESSAGE) {
+				if (msg.obj == null)
+					throw new IllegalArgumentException("Motor speeds matrix missing");
+				SimpleMatrix motorSpeeds = (SimpleMatrix)msg.obj;
+				Log.d("MOTOR SPEEDS", motorSpeeds.toString());
+				//TODO: send this information to the QCB
 			}
 		}
 		
@@ -132,7 +150,7 @@ public class MainService extends Service {
 	 * @param flightMode true if the quadrotor has to be armed, false otherwise
 	 */
 	public void sendFlightModeToQcb(boolean flightMode) {
-		new Thread (new Runnable(){
+		btCommunicationLooper.handler.post(new Runnable(){
 			public void run() {
 				try {
 					qcfpCommunication.sendFlightMode(true);
@@ -146,7 +164,7 @@ public class MainService extends Service {
 					Log.e(TAG, errorStr, e);
 				}
 			}
-		}, "FlightModeBluetoothThread").start();
+		});
 	}
 	
 	/**
@@ -155,7 +173,7 @@ public class MainService extends Service {
 	 * the {@link QcfpCommunication#sendStartStopCalibration(Boolean)}
 	 */
 	public void sendCalibrateSignalToQcb(final boolean startStopCalibration) {
-		new Thread (new Runnable(){
+		btCommunicationLooper.handler.post(new Runnable(){
 			public void run() {
 				try {
 					qcfpCommunication.sendStartStopCalibration(startStopCalibration);
@@ -169,7 +187,17 @@ public class MainService extends Service {
 					Log.e(TAG, errorStr, e);
 				}
 			}
-		}, "SendCalibrationBluetoothThread").start();
+		});
+	}
+	
+	public void sendMotorSpeedsToQcb(final SimpleMatrix motorSpeeds) {
+		btCommunicationLooper.handler.post(new Runnable(){
+			public void run() {
+				if (motorSpeeds.getNumElements() != 4)
+					throw new IllegalArgumentException("Number of motor speeds should be 4");
+				//TODO
+			}
+		});
 	}
 	
 	/**
@@ -198,6 +226,25 @@ public class MainService extends Service {
 		} else if (calibrationStatus == QcfpCommands.QCFP_CALIBRATE_QUADROTOR_UNABLE_TO_CALIBRATE
 				|| calibrationStatus == QcfpCommands.QCFP_CALIBRATE_QUADROTOR_UNCALIBRATED) {
 			networkCommunicationManager.sendSystemState(SystemState.UNABLE_TO_CALIBRATE);
+		}
+	}
+	
+	/**
+	 * TODO: move this to the bluetooth manager.
+	 * @author abhin
+	 *
+	 */
+	public class BluetoothCommunicationLooper extends Thread {
+		public Handler handler = new Handler();
+		
+		public BluetoothCommunicationLooper() {
+			super("BluetoothCommunicationLooper");
+		}
+		
+		public void run() {
+			//setup looper stuff
+			Looper.prepare();
+			Looper.loop();
 		}
 	}
 }

@@ -23,10 +23,10 @@ public class QcfpCommunication {
 	
 	public static float decodeFloat(byte[] buffer, int index)
 	{
-		int temp = buffer[0];
-		for(int i = 1; i < 4; i++)
+		int temp = buffer[index] & 0x00FF;
+		for(int i = index + 1; i < index + 4; i++)
 		{
-			int toOr = (buffer[i] << (8*i)) & (0x00FF << (8*i));
+			int toOr = (buffer[i] << (8*(i-index))) & (0x00FF << (8*(i-index)));
 			temp |= toOr;
 		}
 		return Float.intBitsToFloat(temp);

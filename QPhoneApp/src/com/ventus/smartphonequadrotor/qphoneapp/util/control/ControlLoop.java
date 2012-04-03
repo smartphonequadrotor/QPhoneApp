@@ -2,6 +2,7 @@ package com.ventus.smartphonequadrotor.qphoneapp.util.control;
 
 import java.util.Date;
 
+import com.ventus.smartphonequadrotor.qphoneapp.services.MainService.MainServiceHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
 
 import android.os.Handler;
@@ -16,7 +17,10 @@ import android.util.Log;
  *
  */
 public class ControlLoop extends Thread {
-	public static final String TAG = ControlLoop.class.getName();
+	public static final String TAG = ControlLoop.class.getSimpleName();
+	
+	public static final int CMAC_UPDATE_MESSAGE = 1;
+	
 	public static final int NUMBER_OF_CMAC_LAYERS = 3;
 	public static final int QUANTIZATION_NUMBER = 100;
 	public static final float ALTERNATE_WEIGHTS_LEARNING_GAIN = 1000;	//Kappa in equation 14 of main-paper
@@ -81,8 +85,14 @@ public class ControlLoop extends Thread {
 	public Handler handler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
-			Log.i(TAG, "Message received in the control loop: " + msg.obj.toString());
-			//TODO
+			if (msg.what == CMAC_UPDATE_MESSAGE) {
+				if (msg.obj == null)
+					throw new IllegalArgumentException("input matrix null");
+				SimpleMatrix output = cmacOutput2MotorSpeeds(triggerCmacUpdate((SimpleMatrix) msg.obj));
+				Message outputMsg = controlSignalHandler.obtainMessage(MainServiceHandler.MOTOR_SPEEDS_MESSAGE);
+				outputMsg.obj = output;
+				controlSignalHandler.sendMessage(outputMsg);
+			}
 		}
 	};
 	

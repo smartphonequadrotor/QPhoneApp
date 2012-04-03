@@ -44,6 +44,16 @@ public class NetworkCommunicationManager {
 	private String xmppTargetJid;
 	
 	/**
+	 * This is the number of kinematics entries that will be cached in this class before
+	 * being sent through the network.
+	 */
+	private static final int KINEMATICS_MAX_BACKLOG = 10;
+	
+	private int kinematicsBacklog = 0;
+	
+	private TriAxisSensorResponse[] kinematicsCache;
+	
+	/**
 	 * In case both the connection clients ( {@link XmppClient} and {@link DirectSocketClient} )
 	 * are connected, then one of them will be chosen when sending the message using this variable.
 	 */
@@ -53,6 +63,7 @@ public class NetworkCommunicationManager {
 		this.owner = owner;
 		onMessageListener = new NcmOnMessageListener();
 		gson = new Gson();
+		kinematicsCache = new TriAxisSensorResponse[KINEMATICS_MAX_BACKLOG];
 		networkCommunicationLooper = new NetworkCommunicationLooper();
 		networkCommunicationLooper.start();
 	}
@@ -250,7 +261,7 @@ public class NetworkCommunicationManager {
 	public void sendSystemState(final SystemState state) {
 		networkCommunicationLooper.handler.post(new Runnable(){
 			public void run() {
-				Responses responses = new Responses(null, null, null, null, null, state.toString(), null);
+				Responses responses = new Responses(null, null, null, null, null, null, state.toString(), null);
 				Envelope envelope = new Envelope(null, null, responses);
 				try {
 					sendNetworkMessage(envelope);
@@ -262,6 +273,34 @@ public class NetworkCommunicationManager {
 					msg.arg1 = Toast.LENGTH_LONG;
 					owner.handler.sendMessage(msg);
 					Log.e(TAG, errorStr, e);
+				}
+			}
+		});
+	}
+	
+	public void sendKinematicsData(final long timestamp, final float roll, final float pitch, final float yaw) {
+		networkCommunicationLooper.handler.post(new Runnable() {
+			public void run() {
+				assert(kinematicsBacklog < KINEMATICS_MAX_BACKLOG);
+				kinematicsCache[kinematicsBacklog] = new TriAxisSensorResponse(timestamp, roll, pitch, yaw);
+				kinematicsBacklog++;
+				if (kinematicsBacklog == KINEMATICS_MAX_BACKLOG) {
+					Responses responses = new Responses(kinematicsCache, null, null, null, null, null, null, null);
+					Envelope envelope = new Envelope(null, null, responses);
+					try {
+						sendNetworkMessage(envelope);
+					} catch (Exception e) {
+						String errorStr = "Network failure: could not send system status";
+						Message msg = new Message();
+						msg.what = MainServiceHandler.TOAST_MESSAGE;
+						msg.obj = errorStr;
+						msg.arg1 = Toast.LENGTH_LONG;
+						owner.handler.sendMessage(msg);
+						Log.e(TAG, errorStr, e);
+					} finally {
+						//regardless of whether the send method succeeded, we have to reset the kinematics cache
+						kinematicsBacklog = 0;
+					}
 				}
 			}
 		});

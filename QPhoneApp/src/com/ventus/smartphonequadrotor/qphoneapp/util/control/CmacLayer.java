@@ -158,11 +158,8 @@ public class CmacLayer {
 			throw new IllegalArgumentException("Size of the alternate control weights is illegal");
 		
 		//scale the deltas according to the timeInterval
-		Log.d(TAG, "delta control weights before scaling: " + deltaControlWeights.toString());
 		deltaControlWeights = deltaControlWeights.mult(timeInterval/1000.0);
-		Log.d(TAG, "delta control weights after scaling: " + deltaControlWeights.toString());
 		deltaAlternateWeights = deltaAlternateWeights.mult(timeInterval/1000.0);
-		Log.d(TAG, "Time interval: " + Long.toString(timeInterval));
 		
 		//update the weights
 		SimpleMatrix correctedInput = roundAndOffsetInput(input);
