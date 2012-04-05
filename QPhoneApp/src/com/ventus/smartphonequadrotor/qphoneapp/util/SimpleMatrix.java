@@ -81,6 +81,21 @@ public class SimpleMatrix extends SimpleBase<SimpleMatrix> {
 	}
 	
 	/**
+	 * This method does in-place addition of the current matrix with the given matrix.
+	 * @param arg the matrix to be added to the current matrix
+	 */
+	public void inPlacePlus(SimpleMatrix arg) {
+		if (arg == null)
+			throw new IllegalArgumentException("The operand cannot be null");
+		if (arg.getNumElements() != this.getNumElements())
+			throw new IllegalArgumentException("The operand matrix has to be of compatible size");
+		
+		for (int i = 0; i < getNumElements(); i++) {
+			this.set(i, this.get(i) + arg.get(i));
+		}
+	}
+	
+	/**
 	 * This method repeats the matrix by the given number of times in the x and y axes.
 	 * @param rowRep The number of times to repeat the matrix along the y-axis
 	 * @param colRep The number of times to repeat the matrix along the x-axis

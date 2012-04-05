@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import com.ventus.smartphonequadrotor.qphoneapp.activities.BluetoothConnectionActivity;
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
+import com.ventus.smartphonequadrotor.qphoneapp.util.control.ControlLoop;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.DataAggregator;
 
 import android.bluetooth.BluetoothAdapter;
@@ -149,7 +150,7 @@ public class BluetoothManager {
 					int length = owner.getBluetoothManager().getInputStream().read(buffer);
 					//send this data to the service thread
 					if (owner.getDataAggregator().bluetoothMessageHandler != null) {
-						Message btMsg = Message.obtain();
+						Message btMsg = owner.getDataAggregator().bluetoothMessageHandler.obtainMessage();
 						btMsg.obj = buffer.clone();
 						btMsg.arg1 = length;
 						owner.getDataAggregator().bluetoothMessageHandler.sendMessage(btMsg);

@@ -49,11 +49,6 @@ public class NetworkCommunicationManager {
 	 */
 	private static final int KINEMATICS_CACHE_SEND_THRESHOLD = 10;
 	/**
-	 * This is the number of kinematics entries that can be cached by the kinematicsCache
-	 * before an overflow occurs.
-	 */
-	private static final int KINEMATICS_CACHE_LIMIT = 2 * KINEMATICS_CACHE_SEND_THRESHOLD;
-	/**
 	 * The index where the next kinematics entry will be inserted into the cache.
 	 */
 	private int kinematicsBacklog = 0;
@@ -288,9 +283,14 @@ public class NetworkCommunicationManager {
 	}
 	
 	public void sendKinematicsData(final long timestamp, final float roll, final float pitch, final float yaw) {
-		networkCommunicationLooper.handler.post(new Runnable() {
+		//to make sure that the QCB can't overwhelm the phone application with kinematics data
+		if (networkCommunicationLooper.handler.hasMessages(NetworkCommunicationLooper.KINEMATICS_MESSAGE)) {
+			networkCommunicationLooper.handler.removeMessages(NetworkCommunicationLooper.KINEMATICS_MESSAGE);
+		}
+		Message msg = networkCommunicationLooper.handler.obtainMessage(NetworkCommunicationLooper.KINEMATICS_MESSAGE);
+		msg.obj = new Runnable() {
 			public void run() {
-				assert(kinematicsBacklog < KINEMATICS_CACHE_LIMIT);
+				assert(kinematicsBacklog < KINEMATICS_CACHE_SEND_THRESHOLD);
 				kinematicsCache[kinematicsBacklog] = new TriAxisSensorResponse(timestamp, roll, pitch, yaw);
 				kinematicsBacklog++;
 				if (kinematicsBacklog >= KINEMATICS_CACHE_SEND_THRESHOLD) {
@@ -301,33 +301,47 @@ public class NetworkCommunicationManager {
 						//if the send is successful, then the cache should be cleared
 						kinematicsBacklog = 0;
 					} catch (Exception e) {
-						String errorStr = "Network failure: could not send system status";
-						Message msg = new Message();
-						msg.what = MainServiceHandler.TOAST_MESSAGE;
-						msg.obj = errorStr;
-						msg.arg1 = Toast.LENGTH_LONG;
-						owner.handler.sendMessage(msg);
-						Log.e(TAG, errorStr, e);
+						//if the kinematics data could not be sent because the network connection
+						//has not yet been setup, then don't log anything
+						if (xmppClient != null || directSocketClient != null) {
+							String errorStr = "Network failure: could not send system status";
+							Message msg = new Message();
+							msg.what = MainServiceHandler.TOAST_MESSAGE;
+							msg.obj = errorStr;
+							msg.arg1 = Toast.LENGTH_LONG;
+							owner.handler.sendMessage(msg);
+							Log.e(TAG, errorStr, e);
+						}
 						//if the kinematicsCache is completely full, then this is a cache overflow
 						//empty the cache
-						if (kinematicsBacklog == KINEMATICS_CACHE_LIMIT)
+						if (kinematicsBacklog == KINEMATICS_CACHE_SEND_THRESHOLD)
 							kinematicsBacklog = 0;
 					}
 				}
 			}
-		});
+		};
+		networkCommunicationLooper.handler.sendMessage(msg);
 	}
 	
 	public class NetworkCommunicationLooper extends Thread {
-		public Handler handler = new Handler();
+		public static final int KINEMATICS_MESSAGE = 1;
+		
+		public Handler handler;
 		
 		public NetworkCommunicationLooper() {
 			super("NetworkCommunicationLooper");
 		}
 		
 		public void run() {
-			//setup looper stuff
 			Looper.prepare();
+			handler = new Handler() {
+				@Override
+				public void handleMessage(Message msg) {
+					if (msg.what == KINEMATICS_MESSAGE) {
+						((Runnable)msg.obj).run();
+					}
+				}
+			};
 			Looper.loop();
 		}
 	}

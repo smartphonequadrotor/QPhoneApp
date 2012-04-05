@@ -2,8 +2,11 @@ package com.ventus.smartphonequadrotor.qphoneapp.util.control;
 
 import java.util.HashMap;
 
+import org.apache.http.message.BasicNameValuePair;
+
 import android.util.Log;
 
+import com.ventus.smartphonequadrotor.qphoneapp.util.KeyValuePair;
 import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
 
 
@@ -42,6 +45,12 @@ public class CmacLayer {
 	public static final String TAG = CmacLayer.class.getSimpleName();
 	public static final int DEFAULT_QUANTIZATION_NUMBER = 100;
 	private HashMap<SimpleMatrix, SimpleMatrix> controlWeights, alternateWeights;
+	/**
+	 * By profiling the application, we noticed that the operations on the {@link HashMap} class
+	 * aren't as cheap as we hoped them to be. So these caches make sure that repeated searches don't get
+	 * executed.
+	 */
+	private KeyValuePair<SimpleMatrix, SimpleMatrix> controlWeightsCache, alternateWeightsCache;
 	private SimpleMatrix offset;					//the inputs will be added by this before evaluation
 	private int quantizationNumber;					//this is the number of cells in the defined range
 	private SimpleMatrix lowerBound;				//the lower bound for the state space
@@ -67,6 +76,8 @@ public class CmacLayer {
 		//init the hash maps
 		controlWeights = new HashMap<SimpleMatrix, SimpleMatrix>();
 		alternateWeights = new HashMap<SimpleMatrix, SimpleMatrix>();
+		controlWeightsCache = new KeyValuePair<SimpleMatrix, SimpleMatrix>(null, null);
+		alternateWeightsCache = new KeyValuePair<SimpleMatrix, SimpleMatrix>(null, null);
 	}
 	
 	public CmacLayer(SimpleMatrix offset) {
@@ -92,15 +103,34 @@ public class CmacLayer {
 		
 		//query the layer and compute the return values
 		SimpleMatrix control, alternate;
-		if (controlWeights.containsKey(roundedOffsettedInput))
+		
+		if (controlWeightsCache.key != null && controlWeightsCache.key.equals(roundedOffsettedInput)) {
+			control = controlWeightsCache.value;
+		} else {
 			control = controlWeights.get(roundedOffsettedInput);
-		else
+			if (control != null) {
+				controlWeightsCache.key = roundedOffsettedInput;
+				controlWeightsCache.value = control;
+			}
+		}
+		if (control == null) {
 			control = new SimpleMatrix(1, CmacOutput.NUMBER_OF_WEIGHTS);
-		if (alternateWeights.containsKey(roundedOffsettedInput))
+			controlWeightsCache.key = roundedOffsettedInput;
+			controlWeightsCache.value = control;
+		}
+		
+		if (alternateWeightsCache.key != null && alternateWeightsCache.key.equals(roundedOffsettedInput)) {
+			alternate = alternateWeightsCache.value;
+		} else {
 			alternate = alternateWeights.get(roundedOffsettedInput);
-		else
+			alternateWeightsCache = new KeyValuePair<SimpleMatrix, SimpleMatrix>(roundedOffsettedInput, alternate);
+		}
+		if (alternate == null) {
 			alternate = new SimpleMatrix(1, CmacOutput.NUMBER_OF_WEIGHTS);
-				
+			alternateWeightsCache.key = roundedOffsettedInput;
+			alternateWeightsCache.value = alternate;
+		}
+		
 		return new CmacOutput(control, alternate, activationFunction);
 	}
 	
@@ -162,16 +192,42 @@ public class CmacLayer {
 		deltaAlternateWeights = deltaAlternateWeights.mult(timeInterval/1000.0);
 		
 		//update the weights
+		//note: we check the caches first because there is a noticeable penalty for 
+		//accessing the hash table un-necessarily.
 		SimpleMatrix correctedInput = roundAndOffsetInput(input);
-		if (controlWeights.containsKey(correctedInput)) {
-			controlWeights.put(correctedInput, controlWeights.get(correctedInput).plus(deltaControlWeights));
+		SimpleMatrix controlSignal, alternateSignal;
+		if (controlWeightsCache.key != null && controlWeightsCache.key.equals(correctedInput)) {
+			controlSignal = controlWeightsCache.value;
 		} else {
-			controlWeights.put(correctedInput, deltaControlWeights);
+			controlSignal = controlWeights.get(correctedInput);
+			if (controlSignal != null) {
+				controlWeightsCache.key = correctedInput;
+				controlWeightsCache.value = controlSignal;
+			}
 		}
-		if (alternateWeights.containsKey(correctedInput)) {
-			alternateWeights.put(correctedInput, alternateWeights.get(correctedInput).plus(deltaAlternateWeights));
+		if (controlSignal != null)
+			controlSignal.inPlacePlus(deltaControlWeights);
+		else {
+			controlWeights.put(correctedInput, deltaControlWeights);
+			controlWeightsCache.key = correctedInput;
+			controlWeightsCache.value = deltaControlWeights;
+		}
+		
+		if (alternateWeightsCache.key != null && alternateWeightsCache.key.equals(correctedInput)) {
+			alternateSignal = alternateWeightsCache.value;
 		} else {
+			alternateSignal = alternateWeights.get(correctedInput);
+			if (alternateSignal != null) {
+				alternateWeightsCache.key = correctedInput;
+				alternateWeightsCache.value = alternateSignal;
+			}
+		}
+		if (alternateSignal != null)
+			alternateSignal.inPlacePlus(deltaAlternateWeights);
+		else {
 			alternateWeights.put(correctedInput, deltaAlternateWeights);
+			alternateWeightsCache.key = correctedInput;
+			alternateWeightsCache.value = deltaAlternateWeights;
 		}
 	}
 	

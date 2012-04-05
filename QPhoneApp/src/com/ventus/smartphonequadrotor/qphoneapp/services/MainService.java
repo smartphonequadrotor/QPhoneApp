@@ -195,6 +195,7 @@ public class MainService extends Service {
 			public void run() {
 				if (motorSpeeds.getNumElements() != 4)
 					throw new IllegalArgumentException("Number of motor speeds should be 4");
+				Log.d(TAG, String.format("MotorSpeeds: %s", motorSpeeds));
 				//TODO
 			}
 		});
@@ -235,15 +236,16 @@ public class MainService extends Service {
 	 *
 	 */
 	public class BluetoothCommunicationLooper extends Thread {
-		public Handler handler = new Handler();
+		public static final int BLUETOOTH_UPDATE_MESSAGE = 1;
+		public Handler handler;
 		
 		public BluetoothCommunicationLooper() {
 			super("BluetoothCommunicationLooper");
 		}
 		
 		public void run() {
-			//setup looper stuff
 			Looper.prepare();
+			handler = new Handler();
 			Looper.loop();
 		}
 	}

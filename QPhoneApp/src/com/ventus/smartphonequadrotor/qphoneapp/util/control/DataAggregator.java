@@ -154,6 +154,11 @@ public class DataAggregator {
 			errors[CmacInputParam.NET_PREVIOUS_ROTOR_SPEED.index] = netPreviousRotorSpeed;
 			Message msg = owner.getControlLoop().handler.obtainMessage(ControlLoop.CMAC_UPDATE_MESSAGE);
 			msg.obj = new SimpleMatrix(1, CmacInputParam.count, true, errors);
+			//if the handler already contains such messages, then write over these messages. This lets the 
+			//QCB not overwhelm the phone with messages.
+			if (owner.getControlLoop().handler.hasMessages(ControlLoop.CMAC_UPDATE_MESSAGE)) {
+				owner.getControlLoop().handler.removeMessages(ControlLoop.CMAC_UPDATE_MESSAGE);
+			}
 			owner.getControlLoop().handler.sendMessage(msg);
 		}
 		timeshiftCurrentVariables(timestamp, height, roll, pitch, yaw);
@@ -343,7 +348,7 @@ public class DataAggregator {
 						
 						//Log.d(TAG, String.format("Kinematics: X: %f Y: %f Z: %f", yaw*180/Math.PI, pitch*180/Math.PI, roll*180/Math.PI));
 						calculateErrorAndUpdateCmac(timestamp, 0, roll, pitch, yaw);
-						//owner.getNetworkCommunicationManager().sendKinematicsData(timestamp, roll, pitch, yaw);
+						owner.getNetworkCommunicationManager().sendKinematicsData(timestamp, roll, pitch, yaw);
 					}
 					break;
 				default:

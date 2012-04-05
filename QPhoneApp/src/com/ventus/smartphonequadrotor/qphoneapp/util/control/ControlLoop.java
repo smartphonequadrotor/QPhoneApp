@@ -52,6 +52,11 @@ public class ControlLoop extends Thread {
 	private long lastUpdateTimestamp = -1;
 	
 	/**
+	 * This is the handler that accepts new messages for the control loop to compute.
+	 */
+	public Handler handler;
+	
+	/**
 	 * Constructor
 	 * @param controlSignalHandler
 	 */
@@ -76,25 +81,25 @@ public class ControlLoop extends Thread {
 	}
 	
 	public void run() {
-		//setup looper stuff
 		Looper.prepare();
+		
+		//create a handler to handle all the messages
+		handler = new Handler() {
+			@Override
+			public void handleMessage(Message msg) {
+				if (msg.what == CMAC_UPDATE_MESSAGE) {
+					if (msg.obj == null)
+						throw new IllegalArgumentException("input matrix null");
+					SimpleMatrix output = cmacOutput2MotorSpeeds(triggerCmacUpdate((SimpleMatrix) msg.obj));
+					Message outputMsg = controlSignalHandler.obtainMessage(MainServiceHandler.MOTOR_SPEEDS_MESSAGE);
+					outputMsg.obj = output;
+					controlSignalHandler.sendMessage(outputMsg);
+				}
+			}
+		};
+		
 		Looper.loop();
 	}
-
-	//create a handler to handle all the messages
-	public Handler handler = new Handler() {
-		@Override
-		public void handleMessage(Message msg) {
-			if (msg.what == CMAC_UPDATE_MESSAGE) {
-				if (msg.obj == null)
-					throw new IllegalArgumentException("input matrix null");
-				SimpleMatrix output = cmacOutput2MotorSpeeds(triggerCmacUpdate((SimpleMatrix) msg.obj));
-				Message outputMsg = controlSignalHandler.obtainMessage(MainServiceHandler.MOTOR_SPEEDS_MESSAGE);
-				outputMsg.obj = output;
-				controlSignalHandler.sendMessage(outputMsg);
-			}
-		}
-	};
 	
 	/**
 	 * This method must be called everytime inputs/state variables change.
