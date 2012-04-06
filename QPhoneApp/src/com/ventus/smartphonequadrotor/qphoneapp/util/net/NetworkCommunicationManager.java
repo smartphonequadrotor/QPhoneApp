@@ -5,6 +5,7 @@ import com.ventus.smartphonequadrotor.qphoneapp.activities.XmppConnectionActivit
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService.MainServiceHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
+import com.ventus.smartphonequadrotor.qphoneapp.util.control.ControlLoop;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Responses;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.SystemState;
@@ -47,7 +48,14 @@ public class NetworkCommunicationManager {
 	 * This is the number of kinematics entries that will be cached in this class before
 	 * an attempt to send this over the network is made.
 	 */
-	private static final int KINEMATICS_CACHE_SEND_THRESHOLD = 10;
+	private static final int KINEMATICS_CACHE_SEND_THRESHOLD = 50;
+	
+	/**
+	 * This is used to reduce the amount of kinematics data that is sent to the controller.
+	 * For example, if this is 2 the every 2nd kinematics data point will be sent.
+	 */
+	private static final int KINEMATICS_SKIP_COUNT_MAX = 2;
+	private int kinematicsSkipCount = 0;
 	/**
 	 * The index where the next kinematics entry will be inserted into the cache.
 	 */
@@ -164,7 +172,10 @@ public class NetworkCommunicationManager {
 				if (envelope.getCommands() != null) {
 					if (envelope.getCommands().getMoveCommandArray() != null 
 							&& envelope.getCommands().getMoveCommandArray().length > 0) {
-						owner.getDataAggregator().processMoveCommand(envelope.getCommands().getMoveCommandArray());
+						//send a message to the control loop
+						Message msg = owner.getControlLoop().handler.obtainMessage(ControlLoop.MOVE_COMMAND_MESSAGE);
+						msg.obj = envelope.getCommands().getMoveCommandArray();
+						owner.getControlLoop().handler.sendMessage(msg);
 					} else if (!envelope.getCommands().getSystemState().equals("")) {
 						if (envelope.getCommands().getSystemState().equals(SystemState.ARMED.toString())) {
 							//the user wishes to arm the quadrotor
@@ -290,32 +301,36 @@ public class NetworkCommunicationManager {
 		Message msg = networkCommunicationLooper.handler.obtainMessage(NetworkCommunicationLooper.KINEMATICS_MESSAGE);
 		msg.obj = new Runnable() {
 			public void run() {
-				assert(kinematicsBacklog < KINEMATICS_CACHE_SEND_THRESHOLD);
-				kinematicsCache[kinematicsBacklog] = new TriAxisSensorResponse(timestamp, roll, pitch, yaw);
-				kinematicsBacklog++;
-				if (kinematicsBacklog >= KINEMATICS_CACHE_SEND_THRESHOLD) {
-					Responses responses = new Responses(kinematicsCache, null, null, null, null, null, null, null);
-					Envelope envelope = new Envelope(null, null, responses);
-					try {
-						sendNetworkMessage(envelope);
-						//if the send is successful, then the cache should be cleared
-						kinematicsBacklog = 0;
-					} catch (Exception e) {
-						//if the kinematics data could not be sent because the network connection
-						//has not yet been setup, then don't log anything
-						if (xmppClient != null || directSocketClient != null) {
-							String errorStr = "Network failure: could not send system status";
-							Message msg = new Message();
-							msg.what = MainServiceHandler.TOAST_MESSAGE;
-							msg.obj = errorStr;
-							msg.arg1 = Toast.LENGTH_LONG;
-							owner.handler.sendMessage(msg);
-							Log.e(TAG, errorStr, e);
-						}
-						//if the kinematicsCache is completely full, then this is a cache overflow
-						//empty the cache
-						if (kinematicsBacklog == KINEMATICS_CACHE_SEND_THRESHOLD)
+				kinematicsSkipCount++;
+				if (kinematicsSkipCount == KINEMATICS_SKIP_COUNT_MAX) {
+					kinematicsSkipCount = 0;
+					assert(kinematicsBacklog < KINEMATICS_CACHE_SEND_THRESHOLD);
+					kinematicsCache[kinematicsBacklog] = new TriAxisSensorResponse(timestamp, roll, pitch, yaw);
+					kinematicsBacklog++;
+					if (kinematicsBacklog >= KINEMATICS_CACHE_SEND_THRESHOLD) {
+						Responses responses = new Responses(kinematicsCache, null, null, null, null, null, null, null);
+						Envelope envelope = new Envelope(null, null, responses);
+						try {
+							sendNetworkMessage(envelope);
+							//if the send is successful, then the cache should be cleared
 							kinematicsBacklog = 0;
+						} catch (Exception e) {
+							//if the kinematics data could not be sent because the network connection
+							//has not yet been setup, then don't log anything
+							if (xmppClient != null || directSocketClient != null) {
+								String errorStr = "Network failure: could not send system status";
+								Message msg = new Message();
+								msg.what = MainServiceHandler.TOAST_MESSAGE;
+								msg.obj = errorStr;
+								msg.arg1 = Toast.LENGTH_LONG;
+								owner.handler.sendMessage(msg);
+								Log.e(TAG, errorStr, e);
+							}
+							//if the kinematicsCache is completely full, then this is a cache overflow
+							//empty the cache
+							if (kinematicsBacklog == KINEMATICS_CACHE_SEND_THRESHOLD)
+								kinematicsBacklog = 0;
+						}
 					}
 				}
 			}

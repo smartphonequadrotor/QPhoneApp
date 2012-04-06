@@ -1,7 +1,5 @@
 package com.ventus.smartphonequadrotor.qphoneapp.util.control;
 
-import android.provider.Settings.System;
-
 import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
 
 

@@ -34,7 +34,6 @@ public class MainService extends Service {
 	private IntentHandler intentHandler;
 	private NetworkCommunicationManager networkCommunicationManager;
 	private BluetoothManager bluetoothManager;
-	private DataAggregator dataAggregator;
 	private ControlLoop controlLoop;
 	private QcfpCommunication qcfpCommunication;
 	private BluetoothCommunicationLooper btCommunicationLooper;
@@ -46,10 +45,9 @@ public class MainService extends Service {
 		networkCommunicationManager = new NetworkCommunicationManager(this);
 		bluetoothManager = new BluetoothManager(this);
 		intentHandler = new IntentHandler(this);
-		dataAggregator = new DataAggregator(this);
 		qcfpCommunication = new QcfpCommunication(bluetoothManager);
 		handler = new MainServiceHandler();
-		controlLoop = new ControlLoop(handler);
+		controlLoop = new ControlLoop(this);
 		btCommunicationLooper = new BluetoothCommunicationLooper();
 	}
 
@@ -69,16 +67,16 @@ public class MainService extends Service {
 		return this.bluetoothManager;
 	}
 	
-	public DataAggregator getDataAggregator() {
-		return this.dataAggregator;
-	}
-	
 	public QcfpCommunication getQcfpCommunication() {
 		return this.qcfpCommunication;
 	}
 	
 	public ControlLoop getControlLoop() {
 		return this.controlLoop;
+	}
+	
+	public BluetoothCommunicationLooper getBtCommunicationLooper() {
+		return this.btCommunicationLooper;
 	}
 
 	/**
@@ -121,10 +119,6 @@ public class MainService extends Service {
 		 * will have to be the the duration of the toast.
 		 */
 		public static final int TOAST_MESSAGE = -1;
-		/**
-		 * This is the message number used when the control loop has computed the desired motor speeds.
-		 */
-		public static final int MOTOR_SPEEDS_MESSAGE = 1;
 
 		@Override
 		public void handleMessage(Message msg) {
@@ -132,13 +126,7 @@ public class MainService extends Service {
 				if (msg.obj == null)
 					throw new IllegalArgumentException("Toast message missing");
 				Toast.makeText(MainService.this, (String) msg.obj, msg.arg1).show();
-			} else if (msg.what == MOTOR_SPEEDS_MESSAGE) {
-				if (msg.obj == null)
-					throw new IllegalArgumentException("Motor speeds matrix missing");
-				SimpleMatrix motorSpeeds = (SimpleMatrix)msg.obj;
-				Log.d("MOTOR SPEEDS", motorSpeeds.toString());
-				//TODO: send this information to the QCB
-			}
+			} 
 		}
 		
 	}
@@ -237,6 +225,10 @@ public class MainService extends Service {
 	 */
 	public class BluetoothCommunicationLooper extends Thread {
 		public static final int BLUETOOTH_UPDATE_MESSAGE = 1;
+		/**
+		 * This is the message number used when the control loop has computed the desired motor speeds.
+		 */
+		public static final int MOTOR_SPEEDS_MESSAGE = 2;
 		public Handler handler;
 		
 		public BluetoothCommunicationLooper() {
@@ -245,7 +237,20 @@ public class MainService extends Service {
 		
 		public void run() {
 			Looper.prepare();
-			handler = new Handler();
+			handler = new Handler() {
+
+				@Override
+				public void handleMessage(Message msg) {
+					if (msg.what == MOTOR_SPEEDS_MESSAGE) {
+						if (msg.obj == null)
+							throw new IllegalArgumentException("Motor speeds matrix missing");
+						SimpleMatrix motorSpeeds = (SimpleMatrix)msg.obj;
+						Log.d("MOTOR SPEEDS", motorSpeeds.toString());
+						//TODO: send this information to the QCB
+					}
+				}
+				
+			};
 			Looper.loop();
 		}
 	}

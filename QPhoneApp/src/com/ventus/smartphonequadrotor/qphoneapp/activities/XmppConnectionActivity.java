@@ -1,28 +1,14 @@
 package com.ventus.smartphonequadrotor.qphoneapp.activities;
 
-import java.util.Calendar;
-
 import com.ventus.smartphonequadrotor.qphoneapp.R;
-import com.ventus.smartphonequadrotor.qphoneapp.R.id;
-import com.ventus.smartphonequadrotor.qphoneapp.R.layout;
-import com.ventus.smartphonequadrotor.qphoneapp.R.menu;
-import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
-import com.ventus.smartphonequadrotor.qphoneapp.util.net.CommunicationMethods;
 import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager;
-import com.ventus.smartphonequadrotor.qphoneapp.util.net.XmppClient;
-
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;

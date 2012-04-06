@@ -1,6 +1,6 @@
 package com.ventus.smartphonequadrotor.qphoneapp.util.json;
 
-public class MoveCommand {
+public class MoveCommand implements Cloneable{
 	private float XVector;
 	private float YVector;
 	private float ZVector;
@@ -39,4 +39,24 @@ public class MoveCommand {
 			Duration
 		);
 	}	
+	
+	@Override
+	protected MoveCommand clone() {
+		return new MoveCommand(XVector, YVector, ZVector, Speed, Duration);
+	}
+	
+	/**
+	 * This method normalizes the direction of the move command's direction vector. This
+	 * is because we don't actually use the magnitude of this vector in the computation.
+	 * @return A move command that is similar to the current command except for the fact
+	 * that the direction vector is normalized.
+	 */
+	public MoveCommand normalizeDirection() {
+		double magnitude = Math.sqrt(Math.pow(this.XVector, 2) + Math.pow(this.YVector, 2) + Math.pow(this.ZVector, 2));
+		MoveCommand normMvCmd = this.clone();
+		normMvCmd.XVector = (float) (this.XVector/magnitude);
+		normMvCmd.YVector = (float) (this.YVector/magnitude);
+		normMvCmd.ZVector = (float) (this.ZVector/magnitude);
+		return normMvCmd;
+	}
 }

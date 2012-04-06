@@ -2,13 +2,14 @@ package com.ventus.smartphonequadrotor.qphoneapp.util.control;
 
 import java.util.Date;
 
-import com.ventus.smartphonequadrotor.qphoneapp.services.MainService.MainServiceHandler;
-import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
-
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
+
+import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
+import com.ventus.smartphonequadrotor.qphoneapp.services.MainService.BluetoothCommunicationLooper;
+import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.MoveCommand;
 
 /**
  * This is a looper thread that handles incoming messages from the data aggregator,
@@ -20,6 +21,7 @@ public class ControlLoop extends Thread {
 	public static final String TAG = ControlLoop.class.getSimpleName();
 	
 	public static final int CMAC_UPDATE_MESSAGE = 1;
+	public static final int MOVE_COMMAND_MESSAGE = 2;
 	
 	public static final int NUMBER_OF_CMAC_LAYERS = 3;
 	public static final int QUANTIZATION_NUMBER = 100;
@@ -45,9 +47,8 @@ public class ControlLoop extends Thread {
 		}
 	);
 	
-	private Handler controlSignalHandler;	//the handler that will accept the output
-											//from this control loop
 	private CmacLayer[] cmacLayers;
+	private DataAggregator dataAggregator;
 	
 	private long lastUpdateTimestamp = -1;
 	
@@ -56,14 +57,16 @@ public class ControlLoop extends Thread {
 	 */
 	public Handler handler;
 	
+	private MainService owner;
+	
 	/**
 	 * Constructor
-	 * @param controlSignalHandler
 	 */
-	public ControlLoop(Handler controlSignalHandler) {
+	public ControlLoop(MainService owner) {
 		super("Control Loop");	//set the thread name for debugging
-		this.controlSignalHandler = controlSignalHandler;
 		cmacLayers = new CmacLayer[NUMBER_OF_CMAC_LAYERS];
+		this.dataAggregator = new DataAggregator();
+		this.owner = owner;
 		// compute the offset increments
 		SimpleMatrix offsetIncrement = CmacInputParam.getDefaultMaxBound()
 										.minus(CmacInputParam.getDefaultMinBound())
@@ -89,11 +92,29 @@ public class ControlLoop extends Thread {
 			public void handleMessage(Message msg) {
 				if (msg.what == CMAC_UPDATE_MESSAGE) {
 					if (msg.obj == null)
-						throw new IllegalArgumentException("input matrix null");
-					SimpleMatrix output = cmacOutput2MotorSpeeds(triggerCmacUpdate((SimpleMatrix) msg.obj));
-					Message outputMsg = controlSignalHandler.obtainMessage(MainServiceHandler.MOTOR_SPEEDS_MESSAGE);
-					outputMsg.obj = output;
-					controlSignalHandler.sendMessage(outputMsg);
+						throw new IllegalArgumentException("input parameters missing");
+					Object[] inputParams = (Object[])msg.obj;
+					SimpleMatrix errorMatrix = dataAggregator.calculateErrors(
+						(Long)inputParams[0], 
+						(Integer)inputParams[1], 
+						(Float)inputParams[2], 
+						(Float)inputParams[3], 
+						(Float)inputParams[4]
+					);
+					if (errorMatrix != null) {
+						SimpleMatrix output = cmacOutput2MotorSpeeds(triggerCmacUpdate(errorMatrix));
+						double netPreviousRotorSpeed = output.elementSum();
+						netPreviousRotorSpeed = (Double.isNaN(netPreviousRotorSpeed)) ? 0 : netPreviousRotorSpeed;
+						dataAggregator.setNetPreviousRotorSpeed(output.elementSum());
+						Message outputMsg = owner.getBtCommunicationLooper().handler
+								.obtainMessage(BluetoothCommunicationLooper.MOTOR_SPEEDS_MESSAGE);
+						outputMsg.obj = output;
+						owner.getBtCommunicationLooper().handler.sendMessage(outputMsg);
+					}
+				} else if (msg.what == MOVE_COMMAND_MESSAGE) {
+					if (msg.obj == null)
+						throw new IllegalArgumentException("move commands missing");
+					dataAggregator.processMoveCommand((MoveCommand[])msg.obj);
 				}
 			}
 		};

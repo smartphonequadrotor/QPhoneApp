@@ -2,10 +2,6 @@ package com.ventus.smartphonequadrotor.qphoneapp.util.control;
 
 import java.util.HashMap;
 
-import org.apache.http.message.BasicNameValuePair;
-
-import android.util.Log;
-
 import com.ventus.smartphonequadrotor.qphoneapp.util.KeyValuePair;
 import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
 
