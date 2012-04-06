@@ -212,11 +212,13 @@ public class BluetoothManager {
 		private static final int DATA_SOURCE_GYRO = 0x02;
 		private static final int DATA_SOURCE_MAG = 0x03;
 		private static final int DATA_SOURCE_KIN = 0x06;
+		private static final int DATA_SOURCE_HEIGHT = 0x07;
 		
 		private static final int ACCEL_PAYLOAD_LENGTH = 12;
 		private static final int GYRO_PAYLOAD_LENGTH = 12;
 		private static final int MAG_PAYLOAD_LENGTH = 12;
 		private static final int KIN_PAYLOAD_LENGTH = 18;
+		private static final int HEIGHT_PAYLOAD_LENGTH = 8;
 		
 		private static final int TIMESTAMP_START_INDEX = 2;
 		
@@ -226,6 +228,8 @@ public class BluetoothManager {
 		private static final int Y_INDEX_MSB = 9;
 		private static final int Z_INDEX_LSB = 10;
 		private static final int Z_INDEX_MSB = 11;
+		private static final int HEIGHT_INDEX_LSB = 6;
+		private static final int HEIGHT_INDEX_MSB = 7;
 		
 		private static final int ROLL_START_INDEX = 6;
 		private static final int PITCH_START_INDEX = 10;
@@ -294,6 +298,14 @@ public class BluetoothManager {
 						msg.obj = new Object[] {timestamp, 0, roll, pitch, yaw};
 						owner.getControlLoop().handler.sendMessage(msg);
 						owner.getNetworkCommunicationManager().sendKinematicsData(timestamp, roll, pitch, yaw);
+					}
+					break;
+				case DATA_SOURCE_HEIGHT:
+					if(length == HEIGHT_PAYLOAD_LENGTH)
+					{
+						int height = (packet[HEIGHT_INDEX_LSB] & 0x00FF) + ((packet[HEIGHT_INDEX_MSB] & 0x00FF) << 8);
+						// TODO: Do something with the height. Height is in cm.
+						// The value isn't reliable when the height is approximately less than 20cm.
 					}
 					break;
 				default:
