@@ -290,9 +290,9 @@ public class BluetoothManager {
 						// Assuming roll, pitch, yaw corresponds to x, y, z and that that is
 						// the order the values are sent in.
 						// Kinematics angles are in radians.
-						yaw = QcfpCommunication.decodeFloat(packet, ROLL_START_INDEX);
+						roll = QcfpCommunication.decodeFloat(packet, ROLL_START_INDEX);
 						pitch = QcfpCommunication.decodeFloat(packet, PITCH_START_INDEX);
-						roll = QcfpCommunication.decodeFloat(packet, YAW_START_INDEX);
+						yaw = QcfpCommunication.decodeFloat(packet, YAW_START_INDEX);
 						
 						Message msg = owner.getControlLoop().handler.obtainMessage(ControlLoop.CMAC_UPDATE_MESSAGE);
 						msg.obj = new Object[] {timestamp, 0, roll, pitch, yaw};
