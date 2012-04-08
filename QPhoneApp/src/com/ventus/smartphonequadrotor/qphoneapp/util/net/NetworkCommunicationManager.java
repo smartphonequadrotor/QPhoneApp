@@ -45,25 +45,35 @@ public class NetworkCommunicationManager {
 	private String xmppTargetJid;
 	
 	/**
-	 * This is the number of kinematics entries that will be cached in this class before
+	 * This is the number of entries that will be cached in this class before
 	 * an attempt to send this over the network is made.
 	 */
-	private static final int KINEMATICS_CACHE_SEND_THRESHOLD = 50;
+	private static final int CACHE_SEND_THRESHOLD = 2;
 	
 	/**
 	 * This is used to reduce the amount of kinematics data that is sent to the controller.
 	 * For example, if this is 2 the every 2nd kinematics data point will be sent.
 	 */
-	private static final int KINEMATICS_SKIP_COUNT_MAX = 2;
+	private static final int CACHE_SKIP_COUNT_MAX = 5;
 	private int kinematicsSkipCount = 0;
+	private int accelerometerSkipCount = 0;
+	private int gyroscopeSkipCount = 0;
+	private int magnetometerSkipCount = 0;
+	
 	/**
 	 * The index where the next kinematics entry will be inserted into the cache.
 	 */
 	private int kinematicsBacklog = 0;
+	private int accelerometerBacklog = 0;
+	private int magnetometerBacklog = 0;
+	private int gyroscopeBacklog = 0;
 	/**
 	 * An array of kinematics responses to slow down the rate at which network requests are made.
 	 */
 	private TriAxisSensorResponse[] kinematicsCache;
+	private TriAxisSensorResponse[] accelerometerCache;
+	private TriAxisSensorResponse[] gyroscopeCache;
+	private TriAxisSensorResponse[] magnetometerCache;
 	
 	/**
 	 * In case both the connection clients ( {@link XmppClient} and {@link DirectSocketClient} )
@@ -75,7 +85,10 @@ public class NetworkCommunicationManager {
 		this.owner = owner;
 		onMessageListener = new NcmOnMessageListener();
 		gson = new Gson();
-		kinematicsCache = new TriAxisSensorResponse[KINEMATICS_CACHE_SEND_THRESHOLD];
+		kinematicsCache = new TriAxisSensorResponse[CACHE_SEND_THRESHOLD];
+		accelerometerCache = new TriAxisSensorResponse[CACHE_SEND_THRESHOLD];
+		magnetometerCache = new TriAxisSensorResponse[CACHE_SEND_THRESHOLD];
+		gyroscopeCache = new TriAxisSensorResponse[CACHE_SEND_THRESHOLD];
 		networkCommunicationLooper = new NetworkCommunicationLooper();
 		networkCommunicationLooper.start();
 	}
@@ -173,9 +186,7 @@ public class NetworkCommunicationManager {
 					if (envelope.getCommands().getMoveCommandArray() != null 
 							&& envelope.getCommands().getMoveCommandArray().length > 0) {
 						//send a message to the control loop
-						Message msg = owner.getControlLoop().handler.obtainMessage(ControlLoop.MOVE_COMMAND_MESSAGE);
-						msg.obj = envelope.getCommands().getMoveCommandArray();
-						owner.getControlLoop().handler.sendMessage(msg);
+						owner.getControlLoop().getDataAggregator().processMoveCommand(envelope.getCommands().getMoveCommandArray());
 					} else if (!envelope.getCommands().getSystemState().equals("")) {
 						if (envelope.getCommands().getSystemState().equals(SystemState.ARMED.toString())) {
 							//the user wishes to arm the quadrotor
@@ -276,7 +287,7 @@ public class NetworkCommunicationManager {
 	public void sendSystemState(final SystemState state) {
 		networkCommunicationLooper.handler.post(new Runnable(){
 			public void run() {
-				Responses responses = new Responses(null, null, null, null, null, null, state.toString(), null);
+				Responses responses = new Responses(null, null, null, null, null, null, null, state.toString(), null);
 				Envelope envelope = new Envelope(null, null, responses);
 				try {
 					sendNetworkMessage(envelope);
@@ -302,13 +313,13 @@ public class NetworkCommunicationManager {
 		msg.obj = new Runnable() {
 			public void run() {
 				kinematicsSkipCount++;
-				if (kinematicsSkipCount == KINEMATICS_SKIP_COUNT_MAX) {
+				if (kinematicsSkipCount == CACHE_SKIP_COUNT_MAX) {
 					kinematicsSkipCount = 0;
-					assert(kinematicsBacklog < KINEMATICS_CACHE_SEND_THRESHOLD);
+					assert(kinematicsBacklog < CACHE_SEND_THRESHOLD);
 					kinematicsCache[kinematicsBacklog] = new TriAxisSensorResponse(timestamp, roll, pitch, yaw);
 					kinematicsBacklog++;
-					if (kinematicsBacklog >= KINEMATICS_CACHE_SEND_THRESHOLD) {
-						Responses responses = new Responses(kinematicsCache, null, null, null, null, null, null, null);
+					if (kinematicsBacklog >= CACHE_SEND_THRESHOLD) {
+						Responses responses = new Responses(kinematicsCache, null, null, null, null, null, null, null, null);
 						Envelope envelope = new Envelope(null, null, responses);
 						try {
 							sendNetworkMessage(envelope);
@@ -328,8 +339,143 @@ public class NetworkCommunicationManager {
 							}
 							//if the kinematicsCache is completely full, then this is a cache overflow
 							//empty the cache
-							if (kinematicsBacklog == KINEMATICS_CACHE_SEND_THRESHOLD)
+							if (kinematicsBacklog == CACHE_SEND_THRESHOLD)
 								kinematicsBacklog = 0;
+						}
+					}
+				}
+			}
+		};
+		networkCommunicationLooper.handler.sendMessage(msg);
+	}
+	
+	public void sendAccelerometerData(final long timestamp, final float x, final float y, final float z) {
+		//to make sure that the QCB can't overwhelm the phone application with data
+		if (networkCommunicationLooper.handler.hasMessages(NetworkCommunicationLooper.ACCELEROMETER_MESSAGE)) {
+			networkCommunicationLooper.handler.removeMessages(NetworkCommunicationLooper.ACCELEROMETER_MESSAGE);
+		}
+		Message msg = networkCommunicationLooper.handler.obtainMessage(NetworkCommunicationLooper.ACCELEROMETER_MESSAGE);
+		msg.obj = new Runnable() {
+			public void run() {
+				accelerometerSkipCount++;
+				if (accelerometerSkipCount == CACHE_SKIP_COUNT_MAX) {
+					accelerometerSkipCount = 0;
+					assert(accelerometerBacklog < CACHE_SEND_THRESHOLD);
+					accelerometerCache[accelerometerBacklog] = new TriAxisSensorResponse(timestamp, x, y, z);
+					accelerometerBacklog++;
+					if (accelerometerBacklog >= CACHE_SEND_THRESHOLD) {
+						Responses responses = new Responses(null, null, accelerometerCache, null, null, null, null, null, null);
+						Envelope envelope = new Envelope(null, null, responses);
+						try {
+							sendNetworkMessage(envelope);
+							//if the send is successful, then the cache should be cleared
+							accelerometerBacklog = 0;
+						} catch (Exception e) {
+							//if the data could not be sent because the network connection
+							//has not yet been setup, then don't log anything
+							if (xmppClient != null || directSocketClient != null) {
+								String errorStr = "Network failure: could not send system status";
+								Message msg = new Message();
+								msg.what = MainServiceHandler.TOAST_MESSAGE;
+								msg.obj = errorStr;
+								msg.arg1 = Toast.LENGTH_LONG;
+								owner.handler.sendMessage(msg);
+								Log.e(TAG, errorStr, e);
+							}
+							//if the cache is completely full, then this is a cache overflow
+							//empty the cache
+							if (accelerometerBacklog == CACHE_SEND_THRESHOLD)
+								accelerometerBacklog = 0;
+						}
+					}
+				}
+			}
+		};
+		networkCommunicationLooper.handler.sendMessage(msg);
+	}
+	
+	public void sendMagnetometerData(final long timestamp, final float x, final float y, final float z) {
+		//to make sure that the QCB can't overwhelm the phone application with data
+		if (networkCommunicationLooper.handler.hasMessages(NetworkCommunicationLooper.MAGNETOMETER_MESSAGE)) {
+			networkCommunicationLooper.handler.removeMessages(NetworkCommunicationLooper.MAGNETOMETER_MESSAGE);
+		}
+		Message msg = networkCommunicationLooper.handler.obtainMessage(NetworkCommunicationLooper.MAGNETOMETER_MESSAGE);
+		msg.obj = new Runnable() {
+			public void run() {
+				magnetometerSkipCount++;
+				if (magnetometerSkipCount == CACHE_SKIP_COUNT_MAX) {
+					magnetometerSkipCount = 0;
+					assert(magnetometerBacklog < CACHE_SEND_THRESHOLD);
+					magnetometerCache[magnetometerBacklog] = new TriAxisSensorResponse(timestamp, x, y, z);
+					magnetometerBacklog++;
+					if (magnetometerBacklog >= CACHE_SEND_THRESHOLD) {
+						Responses responses = new Responses(null, null, null, magnetometerCache, null, null, null, null, null);
+						Envelope envelope = new Envelope(null, null, responses);
+						try {
+							sendNetworkMessage(envelope);
+							//if the send is successful, then the cache should be cleared
+							magnetometerBacklog = 0;
+						} catch (Exception e) {
+							//if the data could not be sent because the network connection
+							//has not yet been setup, then don't log anything
+							if (xmppClient != null || directSocketClient != null) {
+								String errorStr = "Network failure: could not send system status";
+								Message msg = new Message();
+								msg.what = MainServiceHandler.TOAST_MESSAGE;
+								msg.obj = errorStr;
+								msg.arg1 = Toast.LENGTH_LONG;
+								owner.handler.sendMessage(msg);
+								Log.e(TAG, errorStr, e);
+							}
+							//if the cache is completely full, then this is a cache overflow
+							//empty the cache
+							if (magnetometerBacklog == CACHE_SEND_THRESHOLD)
+								magnetometerBacklog = 0;
+						}
+					}
+				}
+			}
+		};
+		networkCommunicationLooper.handler.sendMessage(msg);
+	}
+	
+	public void sendGyroscopeData(final long timestamp, final float x, final float y, final float z) {
+		//to make sure that the QCB can't overwhelm the phone application with data
+		if (networkCommunicationLooper.handler.hasMessages(NetworkCommunicationLooper.GYROSCOPE_MESSAGE)) {
+			networkCommunicationLooper.handler.removeMessages(NetworkCommunicationLooper.GYROSCOPE_MESSAGE);
+		}
+		Message msg = networkCommunicationLooper.handler.obtainMessage(NetworkCommunicationLooper.GYROSCOPE_MESSAGE);
+		msg.obj = new Runnable() {
+			public void run() {
+				gyroscopeSkipCount++;
+				if (gyroscopeSkipCount == CACHE_SKIP_COUNT_MAX) {
+					gyroscopeSkipCount = 0;
+					assert(gyroscopeBacklog < CACHE_SEND_THRESHOLD);
+					gyroscopeCache[gyroscopeBacklog] = new TriAxisSensorResponse(timestamp, x, y, z);
+					gyroscopeBacklog++;
+					if (gyroscopeBacklog >= CACHE_SEND_THRESHOLD) {
+						Responses responses = new Responses(null, gyroscopeCache, null, null, null, null, null, null, null);
+						Envelope envelope = new Envelope(null, null, responses);
+						try {
+							sendNetworkMessage(envelope);
+							//if the send is successful, then the cache should be cleared
+							gyroscopeBacklog = 0;
+						} catch (Exception e) {
+							//if the data could not be sent because the network connection
+							//has not yet been setup, then don't log anything
+							if (xmppClient != null || directSocketClient != null) {
+								String errorStr = "Network failure: could not send system status";
+								Message msg = new Message();
+								msg.what = MainServiceHandler.TOAST_MESSAGE;
+								msg.obj = errorStr;
+								msg.arg1 = Toast.LENGTH_LONG;
+								owner.handler.sendMessage(msg);
+								Log.e(TAG, errorStr, e);
+							}
+							//if the cache is completely full, then this is a cache overflow
+							//empty the cache
+							if (gyroscopeBacklog == CACHE_SEND_THRESHOLD)
+								gyroscopeBacklog = 0;
 						}
 					}
 				}
@@ -340,6 +486,9 @@ public class NetworkCommunicationManager {
 	
 	public class NetworkCommunicationLooper extends Thread {
 		public static final int KINEMATICS_MESSAGE = 1;
+		public static final int ACCELEROMETER_MESSAGE = 2;
+		public static final int MAGNETOMETER_MESSAGE = 3;
+		public static final int GYROSCOPE_MESSAGE = 4;
 		
 		public Handler handler;
 		
@@ -352,7 +501,10 @@ public class NetworkCommunicationManager {
 			handler = new Handler() {
 				@Override
 				public void handleMessage(Message msg) {
-					if (msg.what == KINEMATICS_MESSAGE) {
+					if (msg.what == KINEMATICS_MESSAGE
+							|| msg.what == ACCELEROMETER_MESSAGE
+							|| msg.what == MAGNETOMETER_MESSAGE
+							|| msg.what == GYROSCOPE_MESSAGE) {
 						((Runnable)msg.obj).run();
 					}
 				}

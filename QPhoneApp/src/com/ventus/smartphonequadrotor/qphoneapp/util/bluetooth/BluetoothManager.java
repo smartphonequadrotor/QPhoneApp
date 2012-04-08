@@ -214,26 +214,20 @@ public class BluetoothManager {
 		private static final int DATA_SOURCE_KIN = 0x06;
 		private static final int DATA_SOURCE_HEIGHT = 0x07;
 		
-		private static final int ACCEL_PAYLOAD_LENGTH = 12;
-		private static final int GYRO_PAYLOAD_LENGTH = 12;
-		private static final int MAG_PAYLOAD_LENGTH = 12;
+		private static final int ACCEL_PAYLOAD_LENGTH = 18;
+		private static final int GYRO_PAYLOAD_LENGTH = 18;
+		private static final int MAG_PAYLOAD_LENGTH = 18;
 		private static final int KIN_PAYLOAD_LENGTH = 18;
 		private static final int HEIGHT_PAYLOAD_LENGTH = 8;
 		
 		private static final int TIMESTAMP_START_INDEX = 2;
 		
-		private static final int X_INDEX_LSB = 6;
-		private static final int X_INDEX_MSB = 7;
-		private static final int Y_INDEX_LSB = 8;
-		private static final int Y_INDEX_MSB = 9;
-		private static final int Z_INDEX_LSB = 10;
-		private static final int Z_INDEX_MSB = 11;
 		private static final int HEIGHT_INDEX_LSB = 6;
 		private static final int HEIGHT_INDEX_MSB = 7;
 		
-		private static final int ROLL_START_INDEX = 6;
-		private static final int PITCH_START_INDEX = 10;
-		private static final int YAW_START_INDEX = 14;
+		private static final int X_START_INDEX = 6;
+		private static final int Y_START_INDEX = 10;
+		private static final int Z_START_INDEX = 14;
 		
 		@Override
 		public void run(byte[] packet, int length) {
@@ -241,7 +235,7 @@ public class BluetoothManager {
 			if(length >= 7)
 			{
 				// values from tri axis sensors
-				int x, y, z;
+				float x, y, z;
 				
 				// Timestamp is unsigned
 				long timestamp =
@@ -256,31 +250,31 @@ public class BluetoothManager {
 				case DATA_SOURCE_ACCEL:
 					if(length == ACCEL_PAYLOAD_LENGTH)
 					{
-						x = (packet[X_INDEX_LSB] & 0x00FF) | (packet[X_INDEX_MSB] << 8);
-						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
-						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
-						//kinematicsEstimator.registerAccelValues(x, y, z, timestamp);
-						Log.d(TAG, String.format("Accelerometer: X: %f Y: %f Z: %f", x, y, z));
+						x = QcfpCommunication.decodeFloat(packet, X_START_INDEX);
+						y = QcfpCommunication.decodeFloat(packet, Y_START_INDEX);
+						z = QcfpCommunication.decodeFloat(packet, Z_START_INDEX);
+						//Log.d(TAG, String.format("Accelerometer: X: %f Y: %f Z: %f", x, y, z));
+						//owner.getNetworkCommunicationManager().sendAccelerometerData(timestamp, x, y, z);
 					}
 					break;
 				case DATA_SOURCE_GYRO:
 					if(length == GYRO_PAYLOAD_LENGTH)
 					{
-						x = (packet[X_INDEX_LSB] & 0x00FF) | (packet[X_INDEX_MSB] << 8);
-						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
-						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
-						//kinematicsEstimator.registerGyroValues(x, y, z, timestamp);
-						Log.d(TAG, String.format("Gyroscope: X: %f Y: %f Z: %f", x, y, z));
+						x = QcfpCommunication.decodeFloat(packet, X_START_INDEX);
+						y = QcfpCommunication.decodeFloat(packet, Y_START_INDEX);
+						z = QcfpCommunication.decodeFloat(packet, Z_START_INDEX);
+						//Log.d(TAG, String.format("Gyroscope: X: %f Y: %f Z: %f", x, y, z));
+						//owner.getNetworkCommunicationManager().sendGyroscopeData(timestamp, x, y, z);
 					}
 					break;
 				case DATA_SOURCE_MAG:
 					if(length == MAG_PAYLOAD_LENGTH)
 					{
-						x = (packet[X_INDEX_LSB] & 0x00FF) | (packet[X_INDEX_MSB] << 8);
-						y = (packet[Y_INDEX_LSB] & 0x00FF) | (packet[Y_INDEX_MSB] << 8);
-						z = (packet[Z_INDEX_LSB] & 0x00FF) | (packet[Z_INDEX_MSB] << 8);
-						//kinematicsEstimator.registerMagValues(x, y, z, timestamp);
-						Log.d(TAG, String.format("Magnetometer: X: %f Y: %f Z: %f", x, y, z));
+						x = QcfpCommunication.decodeFloat(packet, X_START_INDEX);
+						y = QcfpCommunication.decodeFloat(packet, Y_START_INDEX);
+						z = QcfpCommunication.decodeFloat(packet, Z_START_INDEX);
+						//Log.d(TAG, String.format("Magnetometer: X: %f Y: %f Z: %f", x, y, z));
+						//owner.getNetworkCommunicationManager().sendMagnetometerData(timestamp, x, y, z);
 					}
 					break;
 				case DATA_SOURCE_KIN:
@@ -290,13 +284,11 @@ public class BluetoothManager {
 						// Assuming roll, pitch, yaw corresponds to x, y, z and that that is
 						// the order the values are sent in.
 						// Kinematics angles are in radians.
-						roll = QcfpCommunication.decodeFloat(packet, ROLL_START_INDEX);
-						pitch = QcfpCommunication.decodeFloat(packet, PITCH_START_INDEX);
-						yaw = QcfpCommunication.decodeFloat(packet, YAW_START_INDEX);
+						roll = QcfpCommunication.decodeFloat(packet, X_START_INDEX);
+						pitch = QcfpCommunication.decodeFloat(packet, Y_START_INDEX);
+						yaw = QcfpCommunication.decodeFloat(packet, Z_START_INDEX);
 						
-						Message msg = owner.getControlLoop().handler.obtainMessage(ControlLoop.CMAC_UPDATE_MESSAGE);
-						msg.obj = new Object[] {timestamp, 0, roll, pitch, yaw};
-						owner.getControlLoop().handler.sendMessage(msg);
+						owner.getControlLoop().getDataAggregator().processNewKinematicsData(timestamp, roll, pitch, yaw);
 						owner.getNetworkCommunicationManager().sendKinematicsData(timestamp, roll, pitch, yaw);
 					}
 					break;
@@ -304,8 +296,9 @@ public class BluetoothManager {
 					if(length == HEIGHT_PAYLOAD_LENGTH)
 					{
 						int height = (packet[HEIGHT_INDEX_LSB] & 0x00FF) + ((packet[HEIGHT_INDEX_MSB] & 0x00FF) << 8);
-						// TODO: Do something with the height. Height is in cm.
+						// Do something with the height. Height is in cm.
 						// The value isn't reliable when the height is approximately less than 20cm.
+						owner.getControlLoop().getDataAggregator().processNewHeightData(timestamp, height);
 					}
 					break;
 				default:

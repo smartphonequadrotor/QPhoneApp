@@ -77,13 +77,15 @@ public class ControlLoopTest extends TestCase {
 				-0.5, 0, 0, 0, -25, 0, 0, 0, 0, 0, 0, 0, (4*1000*2*Math.PI)
 			}
 		);
+		SimpleMatrix motorSpeeds, cmacOutput;
 		Log.d(TAG, "Sending input to control loop: " + input);
-		SimpleMatrix motorSpeeds = loop.cmacOutput2MotorSpeeds(loop.triggerCmacUpdate(input));
-		Log.d(TAG, "Motor speeds suggested by cmac: " + motorSpeeds);
-		motorSpeeds = loop.cmacOutput2MotorSpeeds(loop.triggerCmacUpdate(input));
-		Log.d(TAG, "Motor speeds suggested by cmac: " + motorSpeeds);
-		motorSpeeds = loop.cmacOutput2MotorSpeeds(loop.triggerCmacUpdate(input));
-		Log.d(TAG, "Motor speeds suggested by cmac: " + motorSpeeds);
+		for (int i = 0; i < 5; i++) {
+			cmacOutput = loop.triggerCmacUpdate(input);
+			motorSpeeds = loop.cmacOutput2MotorSpeeds(cmacOutput);
+			assertFalse("The motor speeds are NaN", 
+					(Double.isNaN(motorSpeeds.get(0))));	//TODO add the rest of the conditions
+			Log.d(TAG, "Motor speeds suggested by cmac: " + motorSpeeds);
+		}
 	}
 
 	/**

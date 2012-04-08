@@ -5,6 +5,7 @@ import java.util.Date;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.util.Log;
 
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService;
 import com.ventus.smartphonequadrotor.qphoneapp.services.MainService.BluetoothCommunicationLooper;
@@ -20,8 +21,11 @@ import com.ventus.smartphonequadrotor.qphoneapp.util.json.MoveCommand;
 public class ControlLoop extends Thread {
 	public static final String TAG = ControlLoop.class.getSimpleName();
 	
-	public static final int CMAC_UPDATE_MESSAGE = 1;
-	public static final int MOVE_COMMAND_MESSAGE = 2;
+	public static final int TILT_UPDATE_MESSAGE = 1;
+	public static final int HEIGHT_UPDATE_MESSAGE = 2;
+	public static final int MOVE_COMMAND_MESSAGE = 3;
+	
+	public static final int TILT_UPDATE_MESSAGE_PARAM_COUNT = 4;
 	
 	public static final int NUMBER_OF_CMAC_LAYERS = 3;
 	public static final int QUANTIZATION_NUMBER = 100;
@@ -46,24 +50,26 @@ public class ControlLoop extends Thread {
 			0.25,	0.5,	0,		-0.25
 		}
 	);
+	private static final long SLEEP_TIME = 50;	//length of time in milliseconds that the control loop sleeps for
 	
 	private CmacLayer[] cmacLayers;
 	private DataAggregator dataAggregator;
 	
 	private long lastUpdateTimestamp = -1;
 	
-	/**
-	 * This is the handler that accepts new messages for the control loop to compute.
-	 */
-	public Handler handler;
-	
 	private MainService owner;
+	
+	/**
+	 * If this variable is set to false, then the control loop stops running
+	 */
+	private boolean shouldControlLoopRun;
 	
 	/**
 	 * Constructor
 	 */
 	public ControlLoop(MainService owner) {
 		super("Control Loop");	//set the thread name for debugging
+		shouldControlLoopRun = true;
 		cmacLayers = new CmacLayer[NUMBER_OF_CMAC_LAYERS];
 		this.dataAggregator = new DataAggregator();
 		this.owner = owner;
@@ -83,43 +89,32 @@ public class ControlLoop extends Thread {
 		}
 	}
 	
+	public DataAggregator getDataAggregator() {
+		return this.dataAggregator;
+	}
+	
 	public void run() {
-		Looper.prepare();
-		
-		//create a handler to handle all the messages
-		handler = new Handler() {
-			@Override
-			public void handleMessage(Message msg) {
-				if (msg.what == CMAC_UPDATE_MESSAGE) {
-					if (msg.obj == null)
-						throw new IllegalArgumentException("input parameters missing");
-					Object[] inputParams = (Object[])msg.obj;
-					SimpleMatrix errorMatrix = dataAggregator.calculateErrors(
-						(Long)inputParams[0], 
-						(Integer)inputParams[1], 
-						(Float)inputParams[2], 
-						(Float)inputParams[3], 
-						(Float)inputParams[4]
-					);
-					if (errorMatrix != null) {
-						SimpleMatrix output = cmacOutput2MotorSpeeds(triggerCmacUpdate(errorMatrix));
-						double netPreviousRotorSpeed = output.elementSum();
-						netPreviousRotorSpeed = (Double.isNaN(netPreviousRotorSpeed)) ? 0 : netPreviousRotorSpeed;
-						dataAggregator.setNetPreviousRotorSpeed(output.elementSum());
-						Message outputMsg = owner.getBtCommunicationLooper().handler
-								.obtainMessage(BluetoothCommunicationLooper.MOTOR_SPEEDS_MESSAGE);
-						outputMsg.obj = output;
-						owner.getBtCommunicationLooper().handler.sendMessage(outputMsg);
-					}
-				} else if (msg.what == MOVE_COMMAND_MESSAGE) {
-					if (msg.obj == null)
-						throw new IllegalArgumentException("move commands missing");
-					dataAggregator.processMoveCommand((MoveCommand[])msg.obj);
-				}
+		while (shouldControlLoopRun == true) {
+			//calculate the error matrix
+			SimpleMatrix errors = dataAggregator.calculateErrors();
+			//update the previous errors matrix in the data aggregator for the correctness
+			//of future updates
+			dataAggregator.updatePreviousHrpyErrors(errors);
+			SimpleMatrix cmacOutput = triggerCmacUpdate(errors);
+			SimpleMatrix motorSpeeds = cmacOutput2MotorSpeeds(cmacOutput);
+			double netPreviousRotorSpeed = motorSpeeds.elementSum();
+			netPreviousRotorSpeed = (Double.isNaN(netPreviousRotorSpeed)) ? 0 : netPreviousRotorSpeed;
+			dataAggregator.setNetPreviousRotorSpeed(netPreviousRotorSpeed);
+			Message outputMsg = owner.getBtCommunicationLooper().handler
+					.obtainMessage(BluetoothCommunicationLooper.MOTOR_SPEEDS_MESSAGE);
+			outputMsg.obj = motorSpeeds;
+			owner.getBtCommunicationLooper().handler.sendMessage(outputMsg);
+			try {
+				sleep(SLEEP_TIME);
+			} catch (InterruptedException e) {
+				Log.w(TAG, "Sleep interrupted in control loop");
 			}
-		};
-		
-		Looper.loop();
+		}
 	}
 	
 	/**
