@@ -7,6 +7,9 @@ public class QcfpCommands {
 	public static byte QCFP_CALIBRATE_QUADROTOR_STOP = 0x00;
 	public static byte QCFP_CALIBRATE_QUADROTOR_START = 0x01;
 	
+	public static byte QCFP_SET_DESIRED_ANGLES = 0x25;
+	public static byte QCFP_SET_DESIRED_HEIGHT = 0x26;
+	
 	public static byte QCFP_CALIBRATE_QUADROTOR_UNCALIBRATED = 0x00;
 	public static byte QCFP_CALIBRATE_QUADROTOR_CALIBRATED = 0x01;
 	public static byte QCFP_CALIBRATE_QUADROTOR_CALIBRATING = 0x02;

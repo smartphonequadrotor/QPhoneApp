@@ -134,14 +134,25 @@ public class BluetoothManager {
 	 * This thread is an infinite loop that contains a blocking call to the
 	 * bluetooth input stream. 
 	 */
-	public Thread bluetoothReader = new Thread("BluetoothReaderThread") {
+	public BluetoothReaderThread bluetoothReader = new BluetoothReaderThread();
+	
+	public class BluetoothReaderThread extends Thread {
 		public static final int BUFFER_SIZE = 2*QcfpParser.QCFP_MAX_PACKET_SIZE;
+		private boolean shouldRun = true;
+		
+		public BluetoothReaderThread() {
+			super("BluetoothReader");
+		}
+		
+		public void stopBluetoothReader() {
+			this.shouldRun = false;
+		}
 		
 		@Override
 		public void run() {
 			byte[] buffer = new byte[BUFFER_SIZE];
 			
-			while (true) {
+			while (shouldRun) {
 				try {
 					if (owner.getBluetoothManager().getInputStream() == null) {
 						try {
@@ -159,7 +170,7 @@ public class BluetoothManager {
 				}
 			}
 		}
-	};
+	}
 	
 	/**
 	 * This callback receives data from the bluetooth. The data is in the form of a 
@@ -288,8 +299,12 @@ public class BluetoothManager {
 						pitch = QcfpCommunication.decodeFloat(packet, Y_START_INDEX);
 						yaw = QcfpCommunication.decodeFloat(packet, Z_START_INDEX);
 						
-						owner.getControlLoop().getDataAggregator().processNewKinematicsData(timestamp, roll, pitch, yaw);
-						owner.getNetworkCommunicationManager().sendKinematicsData(timestamp, roll, pitch, yaw);
+						if (!Float.isNaN(roll) && !Float.isNaN(pitch) && !Float.isNaN(yaw)) {
+							owner.getControlLoop().getDataAggregator().processNewKinematicsData(timestamp, roll, pitch, yaw);
+							owner.getNetworkCommunicationManager().sendKinematicsData(timestamp, roll, pitch, yaw);
+						} else {
+							Log.e(TAG, "Orientation values are NaN");
+						}						
 					}
 					break;
 				case DATA_SOURCE_HEIGHT:

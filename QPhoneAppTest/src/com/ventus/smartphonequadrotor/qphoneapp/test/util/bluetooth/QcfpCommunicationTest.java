@@ -96,5 +96,16 @@ public class QcfpCommunicationTest extends TestCase {
 		result = QcfpCommunication.decodeFloat(buffer, 0);
 		assertEquals(-0.15721919f, result);
 	}
+	
+	public void testHexString2Byte() {
+		String hexStr = "2a4b";
+		byte[] expectedByteArray = new byte[] {0x2a, 0x4b};
+		byte[] byteArray = QcfpCommunication.hexString2Byte(hexStr);
+		
+		assertEquals(expectedByteArray.length, byteArray.length);
+		
+		for (int i = 0; i < byteArray.length; i++)
+			assertEquals(expectedByteArray[i], byteArray[i]);
+	}
 
 }

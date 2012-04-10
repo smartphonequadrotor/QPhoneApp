@@ -1,6 +1,9 @@
 package com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 import android.util.Log;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommands;
 
@@ -80,6 +83,27 @@ public class QcfpCommunication {
 		}
 		sendBluetoothMessage(QcfpCommunication.encodeData(buffer, buffer.length));
 	}
+
+	public void sendDesiredHrpy(short height, float[] rpy) throws Exception {
+		if (height < 0)
+			throw new IllegalArgumentException("Height cannot be negative");
+		if (rpy == null || rpy.length != 3) 
+			throw new IllegalArgumentException("Roll, pitch, yaw array is illegal");
+		
+		ByteBuffer rpyBuffer = ByteBuffer.allocate(13).order(ByteOrder.LITTLE_ENDIAN);
+		ByteBuffer heightBuffer = ByteBuffer.allocate(3).order(ByteOrder.LITTLE_ENDIAN);
+		
+		rpyBuffer.put(QcfpCommands.QCFP_SET_DESIRED_ANGLES);
+		heightBuffer.put(QcfpCommands.QCFP_SET_DESIRED_HEIGHT);
+		
+		for (float angle : rpy) {
+			rpyBuffer.putFloat(angle);
+		}
+		heightBuffer.putShort(height);
+		
+		sendBluetoothMessage(QcfpCommunication.encodeData(rpyBuffer.array(), rpyBuffer.array().length));
+		sendBluetoothMessage(QcfpCommunication.encodeData(heightBuffer.array(), heightBuffer.array().length));
+	}
 	
 	/**
 	 * Queries the current flight mode.
@@ -112,6 +136,11 @@ public class QcfpCommunication {
 		sendBluetoothMessage(QcfpCommunication.encodeData(buffer, buffer.length));
 	}
 	
+	public void sendDebugInformation(String debugStr) throws Exception {
+		byte[] buffer = hexString2Byte(debugStr);
+		sendBluetoothMessage(QcfpCommunication.encodeData(buffer, buffer.length));
+	}
+	
 	/**
 	 * Queries the calibration state.
 	 * @throws Exception
@@ -128,7 +157,7 @@ public class QcfpCommunication {
 	 * over bluetooth.
 	 * @param message
 	 */
-	private void sendBluetoothMessage(byte[] message) {
+	public void sendBluetoothMessage(byte[] message) {
 		try {
 			this.bluetoothManager.write(message);
 		} catch (IOException ioEx) {
@@ -182,5 +211,16 @@ public class QcfpCommunication {
 		byte[] returnArray = new byte[encodedDataIndex];
 		System.arraycopy(encodedData, 0, returnArray, 0, encodedDataIndex);
 		return returnArray;
+	}
+	
+	public static byte[] hexString2Byte(String hex) {
+		int bufferLength = hex.length()/2;
+		ByteBuffer buffer = ByteBuffer.allocate(bufferLength);
+		
+		for (int i = 0; i < bufferLength; i++) {
+			String byteStr = hex.substring(2*i, 2*(i+1));
+			buffer.put((byte)(Short.parseShort(byteStr, 16) & 0x00ff));
+		}
+		return buffer.array();
 	}
 }

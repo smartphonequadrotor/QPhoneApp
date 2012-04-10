@@ -7,6 +7,7 @@ import com.ventus.smartphonequadrotor.qphoneapp.services.MainService.MainService
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.ControlLoop;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.HrpyCommand;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Responses;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.SystemState;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.TriAxisSensorResponse;
@@ -181,20 +182,35 @@ public class NetworkCommunicationManager {
 		public void onMessage(String message) {
 			//attempt to decode the message
 			Envelope envelope = gson.fromJson(message, Envelope.class);
-			if (envelope != null) {
-				if (envelope.getCommands() != null) {
-					if (envelope.getCommands().getMoveCommandArray() != null 
-							&& envelope.getCommands().getMoveCommandArray().length > 0) {
-						//send a message to the control loop
-						owner.getControlLoop().getDataAggregator().processMoveCommand(envelope.getCommands().getMoveCommandArray());
-					} else if (!envelope.getCommands().getSystemState().equals("")) {
-						if (envelope.getCommands().getSystemState().equals(SystemState.ARMED.toString())) {
-							//the user wishes to arm the quadrotor
-							owner.sendFlightModeToQcb(true);
-						} else if (envelope.getCommands().getSystemState().equals(SystemState.CALIBRATING.toString())) {
-							//the user wishes to calibrate the quadrotor
-							owner.sendCalibrateSignalToQcb(true);
-						}
+			if (envelope != null && envelope.getCommands() != null) {
+				if (envelope.getCommands().getMoveCommandArray() != null 
+						&& envelope.getCommands().getMoveCommandArray().length > 0) {
+					//send a message to the control loop
+					owner.getControlLoop().getDataAggregator().processMoveCommand(envelope.getCommands().getMoveCommandArray());
+				} else if (envelope.getCommands().getSystemState() != null
+						&& !envelope.getCommands().getSystemState().equals("")) {
+					if (envelope.getCommands().getSystemState().equals(SystemState.ARMED.toString())) {
+						//the user wishes to arm the quadrotor
+						owner.sendFlightModeToQcb(true);
+					} else if (envelope.getCommands().getSystemState().equals(SystemState.CALIBRATING.toString())) {
+						//the user wishes to calibrate the quadrotor
+						owner.sendCalibrateSignalToQcb(true);
+					}
+				} else if (envelope.getCommands().getHrpyCommandArray() != null
+							&& envelope.getCommands().getHrpyCommandArray().length > 0) {
+					//use the last element of the array and send that to the QCB
+					HrpyCommand[] desiredHrpyArray = envelope.getCommands().getHrpyCommandArray();
+					HrpyCommand desiredHrpy = desiredHrpyArray[desiredHrpyArray.length - 1];
+					owner.sendDesiredHrpyToQcb(
+						desiredHrpy.getHeight(), 
+						desiredHrpy.getRoll(), 
+						desiredHrpy.getPitch(), 
+						desiredHrpy.getYaw()
+					);
+				} else if (envelope.getCommands().getDebug() != null
+						&& envelope.getCommands().getDebug().length != 0) {
+					for (String debugStr : envelope.getCommands().getDebug()) {
+						owner.sendDebugStringToQcb(debugStr);
 					}
 				}
 			}

@@ -73,8 +73,14 @@ public class DataAggregator {
 		//enough that it doesn't cause errors (from being zero) but small enough that 
 		//its impact on the math is insignificant
 		for (int i = 0; i < DESIRED_DATA_HISTORY_LENGTH; i++) {
-			this.desiredHrpyHistory[i].key = (long) (DESIRED_DATA_HISTORY_LENGTH - i);
-			this.desiredHrpyHistory[i].value = new Double[4];
+			this.desiredHrpyHistory[i] = new KeyValuePair<Long, Double[]>(
+				(long) (DESIRED_DATA_HISTORY_LENGTH - i),
+				new Double[4]
+			);
+		}
+		
+		for (int i = 0; i < 4; i++) {
+			this.acquiredHrpyHistory[i] = new KeyValuePair<Long, Double>(0L, 0D);
 		}
 	}
 	

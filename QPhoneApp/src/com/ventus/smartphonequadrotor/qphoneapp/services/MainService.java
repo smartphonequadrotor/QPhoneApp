@@ -1,6 +1,7 @@
 package com.ventus.smartphonequadrotor.qphoneapp.services;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
@@ -57,6 +58,14 @@ public class MainService extends Service {
 		declareIntentFilters();
 		controlLoop.start();
 		btCommunicationLooper.start();
+	}
+
+	@Override
+	public void onDestroy() {
+		unregisterReceiver(intentHandler);
+		this.controlLoop.stopControlLoop();
+		this.bluetoothManager.bluetoothReader.stopBluetoothReader();
+		super.onDestroy();
 	}
 
 	public NetworkCommunicationManager getNetworkCommunicationManager() {
@@ -177,6 +186,24 @@ public class MainService extends Service {
 			}
 		});
 	}
+
+	public void sendDesiredHrpyToQcb(final int height, final float roll, final float pitch, final float yaw) {
+		btCommunicationLooper.handler.post(new Runnable() {
+			public void run() {
+				try {
+					qcfpCommunication.sendDesiredHrpy((short)height, new float[] {roll, pitch, yaw});
+				} catch (Exception e) {
+					String errorStr = "Bluetooth failure: cannot send hrpy command";
+					Message msg = new Message();
+					msg.what = MainServiceHandler.TOAST_MESSAGE;
+					msg.obj = errorStr;
+					msg.arg1 = Toast.LENGTH_LONG;
+					handler.sendMessage(msg);
+					Log.e(TAG, errorStr, e);
+				}
+			}
+		});
+	}
 	
 	public void sendMotorSpeedsToQcb(final SimpleMatrix motorSpeeds) {
 		btCommunicationLooper.handler.post(new Runnable(){
@@ -185,6 +212,32 @@ public class MainService extends Service {
 					throw new IllegalArgumentException("Number of motor speeds should be 4");
 				Log.d(TAG, String.format("MotorSpeeds: %s", motorSpeeds));
 				//TODO
+			}
+		});
+	}
+
+	/**
+	 * Sends the debug string to the QCB as a byte array. This assumes that the debug string is
+	 * a valid hex data and that it is not null.
+	 * @param debug
+	 */
+	public void sendDebugStringToQcb(final String debug) {
+		if (debug.length() % 2 != 0)
+			throw new IllegalArgumentException("Debug string should have even characters");
+		
+		btCommunicationLooper.handler.post(new Runnable() {
+			public void run() {
+				try {
+					qcfpCommunication.sendDebugInformation(debug);
+				} catch (Exception e) {
+					String errorStr = "Bluetooth failure: cannot send debug information";
+					Message msg = new Message();
+					msg.what = MainServiceHandler.TOAST_MESSAGE;
+					msg.obj = errorStr;
+					msg.arg1 = Toast.LENGTH_LONG;
+					handler.sendMessage(msg);
+					Log.e(TAG, errorStr, e);
+				}
 			}
 		});
 	}

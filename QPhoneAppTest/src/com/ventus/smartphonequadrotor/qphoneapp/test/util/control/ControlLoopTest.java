@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.CmacInputParam;
+import com.ventus.smartphonequadrotor.qphoneapp.util.control.CmacOutput;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.ControlLoop;
 
 import junit.framework.TestCase;
@@ -40,16 +41,16 @@ public class ControlLoopTest extends TestCase {
 	/**
 	 * Test method for {@link ControlLoop#triggerCmacUpdate(SimpleMatrix)}.
 	 */
-	public void testTriggerCmacUpdate() {
-		fail("Not yet implemented");
-	}
+//	public void testTriggerCmacUpdate() {
+//		fail("Not yet implemented");
+//	}
 
 	/**
 	 * Test method for {@link ControlLoop#cmacOutput2MotorSpeeds(SimpleMatrix)}.
 	 */
-	public void testCmacOutput2MotorSpeeds() {
-		fail("Not yet implemented");
-	}
+//	public void testCmacOutput2MotorSpeeds() {
+//		fail("Not yet implemented");
+//	}
 	
 	/**
 	 * This method attempts to check the motor directions that the cmac will output.
@@ -69,6 +70,7 @@ public class ControlLoopTest extends TestCase {
 		 * Lets assume that the motors are all running at the same speed (1000rpm) in the 
 		 * previous time interval. Thus the omega-r is 4*1000*2*PI rad/sec.
 		 */
+		final int HEIGHT_CORRECTION_TEST_ITERATIONS = 10;
 		SimpleMatrix input = new SimpleMatrix(
 			1, 
 			CmacInputParam.count,
@@ -77,14 +79,18 @@ public class ControlLoopTest extends TestCase {
 				-0.5, 0, 0, 0, -25, 0, 0, 0, 0, 0, 0, 0, (4*1000*2*Math.PI)
 			}
 		);
-		SimpleMatrix motorSpeeds, cmacOutput;
-		Log.d(TAG, "Sending input to control loop: " + input);
-		for (int i = 0; i < 5; i++) {
+		SimpleMatrix currentMotorSpeeds, cmacOutput;
+		SimpleMatrix previousMotorSpeeds = SimpleMatrix.zeros(1, CmacOutput.NUMBER_OF_WEIGHTS);
+		Log.d(TAG, "***Starting height change input to control loop: " + input);
+		for (int i = 0; i < HEIGHT_CORRECTION_TEST_ITERATIONS; i++) {
 			cmacOutput = loop.triggerCmacUpdate(input);
-			motorSpeeds = loop.cmacOutput2MotorSpeeds(cmacOutput);
-			assertFalse("The motor speeds are NaN", 
-					(Double.isNaN(motorSpeeds.get(0))));	//TODO add the rest of the conditions
-			Log.d(TAG, "Motor speeds suggested by cmac: " + motorSpeeds);
+			currentMotorSpeeds = loop.cmacOutput2MotorSpeeds(cmacOutput);
+			for (int j = 0; j < CmacOutput.NUMBER_OF_WEIGHTS; j++) {
+				assertFalse("The motor speeds are NaN", Double.isNaN(currentMotorSpeeds.get(j)));
+				assertTrue("Motor speeds are not supposed to decrease", currentMotorSpeeds.get(j) >= previousMotorSpeeds.get(j));
+			}
+			previousMotorSpeeds = currentMotorSpeeds;
+			Log.d(TAG, "Motor speeds suggested by cmac: " + currentMotorSpeeds);
 		}
 	}
 
@@ -107,6 +113,7 @@ public class ControlLoopTest extends TestCase {
 		 * Lets assume that the motors are all running at the same speed (1000rpm) in the 
 		 * previous time interval. Thus the omega-r is 4*1000*2*PI rad/sec.
 		 */
+		final int PITCH_CORRECTION_TEST_ITERATIONS = 10;
 		SimpleMatrix input = new SimpleMatrix(
 			1, 
 			CmacInputParam.count,
@@ -115,12 +122,25 @@ public class ControlLoopTest extends TestCase {
 				0, 0, (-5/180)*Math.PI, 0, 0, 0, (-250/180)*Math.PI, 0, 0, 0, 0, (-62500/180)*Math.PI, (4*1000*2*Math.PI)
 			}
 		);
-		Log.d(TAG, "Sending input to control loop: " + input);
-		SimpleMatrix motorSpeeds = loop.cmacOutput2MotorSpeeds(loop.triggerCmacUpdate(input));
-		Log.d(TAG, "Motor speeds suggested by cmac: " + motorSpeeds);
-		motorSpeeds = loop.cmacOutput2MotorSpeeds(loop.triggerCmacUpdate(input));
-		Log.d(TAG, "Motor speeds suggested by cmac: " + motorSpeeds);
-		motorSpeeds = loop.cmacOutput2MotorSpeeds(loop.triggerCmacUpdate(input));
-		Log.d(TAG, "Motor speeds suggested by cmac: " + motorSpeeds);
+		SimpleMatrix cmacOutput, currentMotorSpeeds;
+		SimpleMatrix previousMotorSpeeds = SimpleMatrix.zeros(1, CmacOutput.NUMBER_OF_WEIGHTS);
+		Log.d(TAG, "***Starting pitch change input to control loop: " + input);
+		for (int i = 0; i < PITCH_CORRECTION_TEST_ITERATIONS; i++) {
+			cmacOutput = loop.triggerCmacUpdate(input);
+			currentMotorSpeeds = loop.cmacOutput2MotorSpeeds(cmacOutput);
+			for (int j = 0; j < CmacOutput.NUMBER_OF_WEIGHTS; j++) {
+				assertFalse("The motor speeds are NaN", Double.isNaN(currentMotorSpeeds.get(j)));
+			}
+			assertTrue(
+				"Motor speeds are supposed to change in different directions diagonally",
+				currentMotorSpeeds.get(0) == -currentMotorSpeeds.get(2)
+			);
+			assertTrue(
+				"Motor speeds are supposed to change in different directions diagonally",
+				currentMotorSpeeds.get(1) == -currentMotorSpeeds.get(3)
+			);
+			previousMotorSpeeds = currentMotorSpeeds;
+			Log.d(TAG, "Motor speeds suggested by cmac: " + currentMotorSpeeds);
+		}
 	}
 }

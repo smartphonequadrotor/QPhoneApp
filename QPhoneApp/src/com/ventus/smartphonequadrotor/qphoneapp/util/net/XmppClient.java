@@ -5,6 +5,7 @@ import org.jivesoftware.smack.ChatManager;
 import org.jivesoftware.smack.Connection;
 import org.jivesoftware.smack.ConnectionConfiguration;
 import org.jivesoftware.smack.ConnectionCreationListener;
+import org.jivesoftware.smack.ConnectionListener;
 import org.jivesoftware.smack.MessageListener;
 import org.jivesoftware.smack.XMPPConnection;
 import org.jivesoftware.smack.XMPPException;
@@ -107,6 +108,29 @@ public class XmppClient {
 		
 		public void connectionCreated(Connection connection) {
 			Log.d(TAG, "Xmpp Connection Created: " + connection.getHost());
+		}
+	};
+	
+	private ConnectionListener connectionListener = new ConnectionListener() {
+		
+		public void reconnectionSuccessful() {
+			Log.d(TAG, "Reconnection Successful");
+		}
+		
+		public void reconnectionFailed(Exception arg0) {
+			Log.d(TAG, "Reconnection failed", arg0);
+		}
+		
+		public void reconnectingIn(int arg0) {
+			Log.d(TAG, "Reconnecting in..." + arg0);
+		}
+		
+		public void connectionClosedOnError(Exception arg0) {
+			Log.d(TAG, "Connection closed on error: ", arg0);
+		}
+		
+		public void connectionClosed() {
+			Log.d(TAG, "Connection closed");
 		}
 	};
 }

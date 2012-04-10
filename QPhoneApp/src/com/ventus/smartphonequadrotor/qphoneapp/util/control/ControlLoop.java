@@ -97,18 +97,20 @@ public class ControlLoop extends Thread {
 		while (shouldControlLoopRun == true) {
 			//calculate the error matrix
 			SimpleMatrix errors = dataAggregator.calculateErrors();
-			//update the previous errors matrix in the data aggregator for the correctness
-			//of future updates
-			dataAggregator.updatePreviousHrpyErrors(errors);
-			SimpleMatrix cmacOutput = triggerCmacUpdate(errors);
-			SimpleMatrix motorSpeeds = cmacOutput2MotorSpeeds(cmacOutput);
-			double netPreviousRotorSpeed = motorSpeeds.elementSum();
-			netPreviousRotorSpeed = (Double.isNaN(netPreviousRotorSpeed)) ? 0 : netPreviousRotorSpeed;
-			dataAggregator.setNetPreviousRotorSpeed(netPreviousRotorSpeed);
-			Message outputMsg = owner.getBtCommunicationLooper().handler
-					.obtainMessage(BluetoothCommunicationLooper.MOTOR_SPEEDS_MESSAGE);
-			outputMsg.obj = motorSpeeds;
-			owner.getBtCommunicationLooper().handler.sendMessage(outputMsg);
+			if (errors != null) {
+				//update the previous errors matrix in the data aggregator for the correctness
+				//of future updates
+				dataAggregator.updatePreviousHrpyErrors(errors);
+				SimpleMatrix cmacOutput = triggerCmacUpdate(errors);
+				SimpleMatrix motorSpeeds = cmacOutput2MotorSpeeds(cmacOutput);
+				double netPreviousRotorSpeed = motorSpeeds.elementSum();
+				netPreviousRotorSpeed = (Double.isNaN(netPreviousRotorSpeed)) ? 0 : netPreviousRotorSpeed;
+				dataAggregator.setNetPreviousRotorSpeed(netPreviousRotorSpeed);
+				Message outputMsg = owner.getBtCommunicationLooper().handler
+						.obtainMessage(BluetoothCommunicationLooper.MOTOR_SPEEDS_MESSAGE);
+				outputMsg.obj = motorSpeeds;
+				owner.getBtCommunicationLooper().handler.sendMessage(outputMsg);
+			}
 			try {
 				sleep(SLEEP_TIME);
 			} catch (InterruptedException e) {
@@ -142,6 +144,8 @@ public class ControlLoop extends Thread {
 			alternateWeights.insertIntoThis(i, 0, output.getAlternateWeights());
 			activationFunctions.set(i, output.getActivationFunction());
 		}
+		Log.d(TAG, "ControlWeights:\n" + controlWeights);
+		Log.d(TAG, "AlternateWeights:\n" + alternateWeights);
 		double activationFunctionSum = activationFunctions.elementSum();
 		SimpleMatrix normalizedActivationFunctions;
 		if (activationFunctionSum != 0)
@@ -197,6 +201,8 @@ public class ControlLoop extends Thread {
 			timeInterval = currentTimestamp - lastUpdateTimestamp;
 		}
 		lastUpdateTimestamp = currentTimestamp;
+		Log.d(TAG, "Delta CW:\n" + deltaControlWeights);
+		Log.d(TAG, "Delta AW:\n" + alternateWeights);
 		for (int i = 0; i < NUMBER_OF_CMAC_LAYERS; i++) {
 			cmacLayers[i].applyDeltas(
 				input,
@@ -225,5 +231,9 @@ public class ControlLoop extends Thread {
 			motorSpeeds.set(i, Math.sqrt(motorSpeed));
 		}
 		return motorSpeeds;
+	}
+	
+	public void stopControlLoop() {
+		this.shouldControlLoopRun = false;
 	}
 }
