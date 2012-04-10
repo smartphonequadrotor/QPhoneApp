@@ -1,11 +1,13 @@
 package com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import android.util.Log;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommands;
+import com.ventus.smartphonequadrotor.qphoneapp.util.control.MotorModel;
 
 public class QcfpCommunication {
 	
@@ -38,23 +40,20 @@ public class QcfpCommunication {
 	/**
 	 * Sends raw motor speeds to the QCB. Motor values will only take effect if
 	 * the QCB is in flight mode.
-	 * @param motor1 Motor speed to set motor 1 to. 0 will turn the motor off. 1 is the lowest
+	 * @param motorSpeeds Motor speeds to set motors to. 0 will turn the motor off. 1 is the lowest
 	 * setting and the current maximum defined is 80. Sending a higher value will result in the
 	 * motor being set to 80. These values will result in a PWM duty cycle on the motors of
 	 * (PWM_BASE + value)/PWM_PERIOD*100% where PWM_BASE is currently 110 and PWM_PERIOD is 200.
-	 * @param motor2 See motor1.
-	 * @param motor3 See motor1.
-	 * @param motor4 See motor1.
 	 * @throws Exception Throws an exception if the command cannot be sent (Bluetooth manager couldn't write).
 	 */
-	public void sendRawMotorSpeeds(byte motor1, byte motor2, byte motor3, byte motor4) throws Exception
+	public void sendRawMotorSpeeds(byte[] motorSpeeds) throws Exception
 	{
+		if (motorSpeeds == null || motorSpeeds.length != MotorModel.NUMBER_OF_MOTORS)
+			throw new IllegalArgumentException("Motor speeds array is incorrect");
+		
 		byte[] buffer = new byte[5];
 		buffer[0] = QcfpCommands.QCFP_RAW_MOTOR_CONTROL;
-		buffer[1] = motor1;
-		buffer[2] = motor2;
-		buffer[3] = motor3;
-		buffer[4] = motor4;
+		System.arraycopy(motorSpeeds, 0, buffer, 1, motorSpeeds.length);
 		sendBluetoothMessage(QcfpCommunication.encodeData(buffer, buffer.length));
 	}
 	
@@ -85,8 +84,6 @@ public class QcfpCommunication {
 	}
 
 	public void sendDesiredHrpy(short height, float[] rpy) throws Exception {
-		if (height < 0)
-			throw new IllegalArgumentException("Height cannot be negative");
 		if (rpy == null || rpy.length != 3) 
 			throw new IllegalArgumentException("Roll, pitch, yaw array is illegal");
 		

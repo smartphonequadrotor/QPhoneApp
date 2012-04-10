@@ -10,6 +10,7 @@ import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommands;
 import com.ventus.smartphonequadrotor.qphoneapp.util.bluetooth.QcfpCommunication;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.ControlLoop;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.DataAggregator;
+import com.ventus.smartphonequadrotor.qphoneapp.util.control.MotorModel;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.SystemState;
 import com.ventus.smartphonequadrotor.qphoneapp.util.net.NetworkCommunicationManager;
 
@@ -208,10 +209,19 @@ public class MainService extends Service {
 	public void sendMotorSpeedsToQcb(final SimpleMatrix motorSpeeds) {
 		btCommunicationLooper.handler.post(new Runnable(){
 			public void run() {
-				if (motorSpeeds.getNumElements() != 4)
-					throw new IllegalArgumentException("Number of motor speeds should be 4");
 				Log.d(TAG, String.format("MotorSpeeds: %s", motorSpeeds));
-				//TODO
+				byte[] motorSpeedsQcfp = MotorModel.motorRpsToQcfpValues(motorSpeeds);
+				try {
+					qcfpCommunication.sendRawMotorSpeeds(motorSpeedsQcfp);
+				} catch (Exception e) {
+					String errorStr = "Bluetooth failure: cannot send motor speesd";
+					Message msg = new Message();
+					msg.what = MainServiceHandler.TOAST_MESSAGE;
+					msg.obj = errorStr;
+					msg.arg1 = Toast.LENGTH_LONG;
+					handler.sendMessage(msg);
+					Log.e(TAG, errorStr, e);
+				}
 			}
 		});
 	}
@@ -298,8 +308,7 @@ public class MainService extends Service {
 						if (msg.obj == null)
 							throw new IllegalArgumentException("Motor speeds matrix missing");
 						SimpleMatrix motorSpeeds = (SimpleMatrix)msg.obj;
-						Log.d("MOTOR SPEEDS", motorSpeeds.toString());
-						//TODO: send this information to the QCB
+						sendMotorSpeedsToQcb(motorSpeeds);
 					}
 				}
 				
