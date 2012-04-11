@@ -2,6 +2,8 @@ package com.ventus.smartphonequadrotor.qphoneapp.util.control;
 
 import java.util.Calendar;
 
+import android.util.Log;
+
 import com.ventus.smartphonequadrotor.qphoneapp.util.KeyValuePair;
 import com.ventus.smartphonequadrotor.qphoneapp.util.SimpleMatrix;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.MoveCommand;
@@ -65,7 +67,7 @@ public class DataAggregator {
 	
 	public DataAggregator() {
 		this.acquiredHrpyHistory = new KeyValuePair[4];
-		this.previousHrpyErrors = new KeyValuePair<Long, Double[]>(0L, new Double[4]);
+		this.previousHrpyErrors = new KeyValuePair<Long, Double[]>(0L, new Double[]{0d, 0d, 0d, 0d});
 		this.desiredHrpyHistory = new KeyValuePair[DESIRED_DATA_HISTORY_LENGTH];
 		this.netPreviousRotorSpeed = 0;
 		
@@ -75,7 +77,7 @@ public class DataAggregator {
 		for (int i = 0; i < DESIRED_DATA_HISTORY_LENGTH; i++) {
 			this.desiredHrpyHistory[i] = new KeyValuePair<Long, Double[]>(
 				(long) (DESIRED_DATA_HISTORY_LENGTH - i),
-				new Double[4]
+				new Double[]{0d, 0d, 0d, 0d}
 			);
 		}
 		
@@ -170,15 +172,19 @@ public class DataAggregator {
 	 */
 	public synchronized SimpleMatrix calculateErrors() {
 		SimpleMatrix errorMatrix = null;
-		if (enoughAcquiredHrpyHistoryExists()) {
-			//if this is not the first reading then,
-			double[] errors = new double[CmacInputParam.count];
-			updateHrpyErrors(errors);
-			updateHrpyErrorDerivatives(errors);
-			updateDesiredDerivatives(errors);
-			
-			errors[CmacInputParam.NET_PREVIOUS_ROTOR_SPEED.index] = netPreviousRotorSpeed;
-			errorMatrix = new SimpleMatrix(1, CmacInputParam.count, true, errors);
+		try {
+			if (enoughAcquiredHrpyHistoryExists()) {
+				//if this is not the first reading then,
+				double[] errors = new double[CmacInputParam.count];
+				updateHrpyErrors(errors);
+				updateHrpyErrorDerivatives(errors);
+				updateDesiredDerivatives(errors);
+				
+				errors[CmacInputParam.NET_PREVIOUS_ROTOR_SPEED.index] = netPreviousRotorSpeed;
+				errorMatrix = new SimpleMatrix(1, CmacInputParam.count, true, errors);
+			}
+		} catch (Exception ex) {
+			Log.e(TAG, "Error in calculating errors", ex);
 		}
 		return errorMatrix;
 	}

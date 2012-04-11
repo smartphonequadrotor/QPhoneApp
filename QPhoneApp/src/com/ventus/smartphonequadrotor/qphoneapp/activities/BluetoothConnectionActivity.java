@@ -189,9 +189,9 @@ public class BluetoothConnectionActivity extends Activity {
 			//if there is an ongoing discovery, then it should be ended
 			if (bluetoothAdapter.isDiscovering()) {
 				bluetoothAdapter.cancelDiscovery();
-				setProgressBarIndeterminateVisibility(false);
 				scanButton.setEnabled(true);
 			}
+			setProgressBarIndeterminateVisibility(true);
 			
 			//at this point, the device is ready to establish a connection with the 
 			//QCB. But this connection will not be established in this activity. It
