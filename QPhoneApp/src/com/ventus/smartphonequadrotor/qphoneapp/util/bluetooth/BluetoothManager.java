@@ -304,7 +304,7 @@ public class BluetoothManager {
 							owner.getNetworkCommunicationManager().sendKinematicsData(timestamp, roll, pitch, yaw);
 						} else {
 							Log.e(TAG, "Orientation values are NaN");
-						}						
+						}
 					}
 					break;
 				case DATA_SOURCE_HEIGHT:
@@ -314,6 +314,7 @@ public class BluetoothManager {
 						// Do something with the height. Height is in cm.
 						// The value isn't reliable when the height is approximately less than 20cm.
 						owner.getControlLoop().getDataAggregator().processNewHeightData(timestamp, height);
+						owner.getNetworkCommunicationManager().sendHeightData(timestamp, height);
 					}
 					break;
 				default:

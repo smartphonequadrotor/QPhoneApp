@@ -62,6 +62,8 @@ public class IntentHandler extends BroadcastReceiver {
 			String address = intent.getStringExtra(ActionExtras.BLUETOOTH_ADDRESS.extra);
 			owner.getBluetoothManager().connect(address);
 			//TODO establish a connection with the device using the bluetooth manager
+		} else if (action.equals(DIRECT_CONNECT_ACTION)) {
+			owner.getNetworkCommunicationManager().setupDirectSocketConnection(intent, owner);
 		}
 	}
 	

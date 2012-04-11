@@ -95,6 +95,10 @@ public class QcfpCommunicationTest extends TestCase {
 		buffer = new byte[] {0x11, (byte) 0xfe, 0x20, (byte) 0xbe};
 		result = QcfpCommunication.decodeFloat(buffer, 0);
 		assertEquals(-0.15721919f, result);
+		
+		buffer = new byte[] {(byte)0, (byte) 0, 94, (byte) 187}; //16 6 21 114 2 0 156 83 94 187
+		result = QcfpCommunication.decodeFloat(buffer, 0);
+		assertEquals(-0.00339243468f, result);
 	}
 	
 	public void testHexString2Byte() {

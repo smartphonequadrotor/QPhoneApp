@@ -25,6 +25,7 @@
         <activity android:name=".activities.XmppConnectionActivity">
         </activity>
         <activity android:name=".activities.ReadyToFlyActivity"></activity>
+        <activity android:name=".activities.DirectSocketConnectionActivity"></activity>
     </application>
 
 </manifest>

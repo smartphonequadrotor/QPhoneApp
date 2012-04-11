@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
+import android.view.ViewDebug.FlagToString;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -174,6 +175,7 @@ public class BluetoothConnectionActivity extends Activity {
 	private View.OnClickListener nextButtonOnClickListener = new View.OnClickListener() {
 		public void onClick(View v) {
 			Intent xmppActIntent = new Intent(BluetoothConnectionActivity.this, XmppConnectionActivity.class);
+			xmppActIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 			startActivity(xmppActIntent);
 		}
 	};
@@ -189,9 +191,9 @@ public class BluetoothConnectionActivity extends Activity {
 			//if there is an ongoing discovery, then it should be ended
 			if (bluetoothAdapter.isDiscovering()) {
 				bluetoothAdapter.cancelDiscovery();
-				setProgressBarIndeterminateVisibility(false);
 				scanButton.setEnabled(true);
 			}
+			setProgressBarIndeterminateVisibility(true);
 			
 			//at this point, the device is ready to establish a connection with the 
 			//QCB. But this connection will not be established in this activity. It

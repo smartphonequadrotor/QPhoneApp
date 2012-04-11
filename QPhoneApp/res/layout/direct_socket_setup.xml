@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent">
+	<LinearLayout 
+	    android:layout_width="fill_parent"
+	    android:layout_height="wrap_content"
+	    android:orientation="vertical" >
+	    <TextView
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:text="@string/selectCommMethod" />
+	    <Spinner
+	        android:id="@+id/commMethodSelectorSpinner"
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:prompt="@string/selectCommMethod" />
+	    <TextView
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:text="@string/commConfig" />
+	    <TextView
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:text="@string/serverAddressLbl" />
+	    <EditText
+	        android:id="@+id/serverAddressTxt"
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content" 
+	        android:text="type def IP here" />
+	    <TextView
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:text="@string/serverPortNumberLbl" />
+	    <EditText
+	        android:id="@+id/serverPortNumberTxt"
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:text="type def port here" />
+	    <Button 
+	        android:id="@+id/netConnectBtn"
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:text="@string/connect" />
+	    <Button 
+	        android:id="@+id/netNextBtn"
+	        android:layout_width="fill_parent"
+	        android:layout_height="wrap_content"
+	        android:text="@string/next_btn_txt" />
+	</LinearLayout>
+</ScrollView>

@@ -5,6 +5,7 @@ public class Responses {
 	private TriAxisSensorResponse[] Gyro;
 	private TriAxisSensorResponse[] Accel;
 	private TriAxisSensorResponse[] Mag;
+	private HeightSensorResponse[] Height;
 	private CameraResponse[] Camera;
 	private BatteryResponse[] Battery;
 	private GpsResponse[] GPS;
@@ -15,6 +16,7 @@ public class Responses {
 						TriAxisSensorResponse[] gyro,
 						TriAxisSensorResponse[] accel, 
 						TriAxisSensorResponse[] mag, 
+						HeightSensorResponse[] height,
 						CameraResponse[] camera,
 						BatteryResponse[] battery, 
 						GpsResponse[] gps,
@@ -24,6 +26,7 @@ public class Responses {
 		Gyro = gyro;
 		Accel = accel;
 		Mag = mag;
+		Height = height;
 		Camera = camera;
 		Battery = battery;
 		GPS = gps;
@@ -42,6 +45,9 @@ public class Responses {
 	}
 	public TriAxisSensorResponse[] getMag() {
 		return Mag;
+	}
+	public HeightSensorResponse[] getHeight() {
+		return Height;
 	}
 	public CameraResponse[] getCamera() {
 		return Camera;
@@ -62,7 +68,8 @@ public class Responses {
 	@Override
 	public String toString() {
 		return String.format(
-			"Orientation: %8$s\nGyro: %1$s\nAccel: %2$s\nMagnetometer: %9$s\nCamera: %3$s\nBattery: %4$s\nGps: %5$s\nSystemState: %6$s\nDebug: %7$s\n",
+			"Orientation: %8$s\nGyro: %1$s\nAccel: %2$s\nMagnetometer: %9$s\nHeight: %10$s" +
+			"Camera: %3$s\nBattery: %4$s\nGps: %5$s\nSystemState: %6$s\nDebug: %7$s\n",
 			Gyro.toString(),
 			Accel.toString(),
 			Camera.toString(),
@@ -71,7 +78,8 @@ public class Responses {
 			SystemState,
 			Debug,
 			Orientation.toString(),
-			Mag.toString()
+			Mag.toString(),
+			Height
 		);
 	}
 }

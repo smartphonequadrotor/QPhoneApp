@@ -7,6 +7,7 @@ import com.ventus.smartphonequadrotor.qphoneapp.services.MainService.MainService
 import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.ControlLoop;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.HeightSensorResponse;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.HrpyCommand;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Responses;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.SystemState;
@@ -60,6 +61,7 @@ public class NetworkCommunicationManager {
 	private int accelerometerSkipCount = 0;
 	private int gyroscopeSkipCount = 0;
 	private int magnetometerSkipCount = 0;
+	private int heightSkipCount = 0;
 	
 	/**
 	 * The index where the next kinematics entry will be inserted into the cache.
@@ -68,6 +70,8 @@ public class NetworkCommunicationManager {
 	private int accelerometerBacklog = 0;
 	private int magnetometerBacklog = 0;
 	private int gyroscopeBacklog = 0;
+	private int heightBacklog = 0;
+	
 	/**
 	 * An array of kinematics responses to slow down the rate at which network requests are made.
 	 */
@@ -75,6 +79,7 @@ public class NetworkCommunicationManager {
 	private TriAxisSensorResponse[] accelerometerCache;
 	private TriAxisSensorResponse[] gyroscopeCache;
 	private TriAxisSensorResponse[] magnetometerCache;
+	private HeightSensorResponse[] heightCache;
 	
 	/**
 	 * In case both the connection clients ( {@link XmppClient} and {@link DirectSocketClient} )
@@ -90,6 +95,7 @@ public class NetworkCommunicationManager {
 		accelerometerCache = new TriAxisSensorResponse[CACHE_SEND_THRESHOLD];
 		magnetometerCache = new TriAxisSensorResponse[CACHE_SEND_THRESHOLD];
 		gyroscopeCache = new TriAxisSensorResponse[CACHE_SEND_THRESHOLD];
+		heightCache = new HeightSensorResponse[CACHE_SEND_THRESHOLD];
 		networkCommunicationLooper = new NetworkCommunicationLooper();
 		networkCommunicationLooper.start();
 	}
@@ -104,6 +110,12 @@ public class NetworkCommunicationManager {
 		this.directSocketClient = directSocketClient;
 	}
 	
+	public NetworkCommunicationManager (XmppClient xmppClient, DirectSocketClient directSocketClient, MainService owner) {
+		this(owner);
+		this.xmppClient = xmppClient;
+		this.directSocketClient = directSocketClient;
+	}
+	
 	/**
 	 * This method should be called by the {@link MainService} when it is ending. This method will
 	 * stop the networkCommunicationHandler;
@@ -111,6 +123,8 @@ public class NetworkCommunicationManager {
 	public void cleanup() {
 		if (networkCommunicationLooper.handler != null && networkCommunicationLooper.handler.getLooper() != null)
 			networkCommunicationLooper.handler.getLooper().quit();
+		if (directSocketClient != null)
+			directSocketClient.cleanup();
 	}
 	
 	public void setXmppClient (XmppClient xmppClient) {
@@ -247,6 +261,18 @@ public class NetworkCommunicationManager {
 			}
 		});
 	}
+
+	/**
+	 * This method is used by the {@link MainService} when it receives an intent from
+	 * the activity requesting a connection between the smartphone and the controller
+	 * through XMPP.
+	 * @param intent The intent that contains the connection data.
+	 * @throws Exception 
+	 */
+	public void setupDirectSocketConnection(Intent intent, Context context) {
+		// TODO Auto-generated method stub
+		
+	}
 	
 	/**
 	 * This method is used by the {@link MainService} when it receives an intent (through {@link IntentHandler}).
@@ -279,7 +305,7 @@ public class NetworkCommunicationManager {
 	}
 	
 	private void sendConnectionFailure() {
-		Intent intent = new Intent(XmppConnectionActivity.NETWORK_CONNECTION_STATUS_UPDATE);
+		Intent intent = new Intent(XmppConnectionActivity.XMPP_CONNECTION_STATUS_UPDATE);
 		intent.putExtra(
 			XmppConnectionActivity.NETWORK_CONNECTION_STATUS, 
 			XmppConnectionActivity.NETWORK_STATUS_CONNECTION_FAILURE
@@ -288,7 +314,7 @@ public class NetworkCommunicationManager {
 	}
 	
 	private void sendConnectionSuccess() {
-		Intent intent = new Intent(XmppConnectionActivity.NETWORK_CONNECTION_STATUS_UPDATE);
+		Intent intent = new Intent(XmppConnectionActivity.XMPP_CONNECTION_STATUS_UPDATE);
 		intent.putExtra(
 			XmppConnectionActivity.NETWORK_CONNECTION_STATUS,
 			XmppConnectionActivity.NETWORK_STATUS_CONNECTED
@@ -303,7 +329,7 @@ public class NetworkCommunicationManager {
 	public void sendSystemState(final SystemState state) {
 		networkCommunicationLooper.handler.post(new Runnable(){
 			public void run() {
-				Responses responses = new Responses(null, null, null, null, null, null, null, state.toString(), null);
+				Responses responses = new Responses(null, null, null, null, null, null, null, null, state.toString(), null);
 				Envelope envelope = new Envelope(null, null, responses);
 				try {
 					sendNetworkMessage(envelope);
@@ -335,7 +361,7 @@ public class NetworkCommunicationManager {
 					kinematicsCache[kinematicsBacklog] = new TriAxisSensorResponse(timestamp, roll, pitch, yaw);
 					kinematicsBacklog++;
 					if (kinematicsBacklog >= CACHE_SEND_THRESHOLD) {
-						Responses responses = new Responses(kinematicsCache, null, null, null, null, null, null, null, null);
+						Responses responses = new Responses(kinematicsCache, null, null, null, null, null, null, null, null, null);
 						Envelope envelope = new Envelope(null, null, responses);
 						try {
 							sendNetworkMessage(envelope);
@@ -380,7 +406,7 @@ public class NetworkCommunicationManager {
 					accelerometerCache[accelerometerBacklog] = new TriAxisSensorResponse(timestamp, x, y, z);
 					accelerometerBacklog++;
 					if (accelerometerBacklog >= CACHE_SEND_THRESHOLD) {
-						Responses responses = new Responses(null, null, accelerometerCache, null, null, null, null, null, null);
+						Responses responses = new Responses(null, null, accelerometerCache, null, null, null, null, null, null, null);
 						Envelope envelope = new Envelope(null, null, responses);
 						try {
 							sendNetworkMessage(envelope);
@@ -425,7 +451,7 @@ public class NetworkCommunicationManager {
 					magnetometerCache[magnetometerBacklog] = new TriAxisSensorResponse(timestamp, x, y, z);
 					magnetometerBacklog++;
 					if (magnetometerBacklog >= CACHE_SEND_THRESHOLD) {
-						Responses responses = new Responses(null, null, null, magnetometerCache, null, null, null, null, null);
+						Responses responses = new Responses(null, null, null, magnetometerCache, null, null, null, null, null, null);
 						Envelope envelope = new Envelope(null, null, responses);
 						try {
 							sendNetworkMessage(envelope);
@@ -470,7 +496,7 @@ public class NetworkCommunicationManager {
 					gyroscopeCache[gyroscopeBacklog] = new TriAxisSensorResponse(timestamp, x, y, z);
 					gyroscopeBacklog++;
 					if (gyroscopeBacklog >= CACHE_SEND_THRESHOLD) {
-						Responses responses = new Responses(null, gyroscopeCache, null, null, null, null, null, null, null);
+						Responses responses = new Responses(null, gyroscopeCache, null, null, null, null, null, null, null, null);
 						Envelope envelope = new Envelope(null, null, responses);
 						try {
 							sendNetworkMessage(envelope);
@@ -500,11 +526,57 @@ public class NetworkCommunicationManager {
 		networkCommunicationLooper.handler.sendMessage(msg);
 	}
 	
+	public void sendHeightData(final long timestamp, final int height) {
+		//to make sure that the QCB can't overwhelm the phone application with data
+		if (networkCommunicationLooper.handler.hasMessages(NetworkCommunicationLooper.HEIGHT_MESSAGE)) {
+			networkCommunicationLooper.handler.removeMessages(NetworkCommunicationLooper.HEIGHT_MESSAGE);
+		}
+		Message msg = networkCommunicationLooper.handler.obtainMessage(NetworkCommunicationLooper.HEIGHT_MESSAGE);
+		msg.obj = new Runnable() {
+			public void run() {
+				heightSkipCount++;
+				if (heightSkipCount == CACHE_SKIP_COUNT_MAX) {
+					heightSkipCount = 0;
+					assert(heightBacklog < CACHE_SEND_THRESHOLD);
+					heightCache[heightBacklog] = new HeightSensorResponse(height, timestamp);
+					heightBacklog++;
+					if (heightBacklog >= CACHE_SEND_THRESHOLD) {
+						Responses responses = new Responses(null, null, null, null, heightCache, null, null, null, null, null);
+						Envelope envelope = new Envelope(null, null, responses);
+						try {
+							sendNetworkMessage(envelope);
+							//if the send is successful, then the cache should be cleared
+							heightBacklog = 0;
+						} catch (Exception e) {
+							//if the data could not be sent because the network connection
+							//has not yet been setup, then don't log anything
+							if (xmppClient != null || directSocketClient != null) {
+								String errorStr = "Network failure: could not send system status";
+								Message msg = new Message();
+								msg.what = MainServiceHandler.TOAST_MESSAGE;
+								msg.obj = errorStr;
+								msg.arg1 = Toast.LENGTH_LONG;
+								owner.handler.sendMessage(msg);
+								Log.e(TAG, errorStr, e);
+							}
+							//if the cache is completely full, then this is a cache overflow
+							//empty the cache
+							if (heightBacklog == CACHE_SEND_THRESHOLD)
+								heightBacklog = 0;
+						}
+					}
+				}
+			}
+		};
+		networkCommunicationLooper.handler.sendMessage(msg);
+	}
+	
 	public class NetworkCommunicationLooper extends Thread {
 		public static final int KINEMATICS_MESSAGE = 1;
 		public static final int ACCELEROMETER_MESSAGE = 2;
 		public static final int MAGNETOMETER_MESSAGE = 3;
 		public static final int GYROSCOPE_MESSAGE = 4;
+		public static final int HEIGHT_MESSAGE = 5;
 		
 		public Handler handler;
 		
@@ -520,7 +592,8 @@ public class NetworkCommunicationManager {
 					if (msg.what == KINEMATICS_MESSAGE
 							|| msg.what == ACCELEROMETER_MESSAGE
 							|| msg.what == MAGNETOMETER_MESSAGE
-							|| msg.what == GYROSCOPE_MESSAGE) {
+							|| msg.what == GYROSCOPE_MESSAGE
+							|| msg.what == HEIGHT_MESSAGE) {
 						((Runnable)msg.obj).run();
 					}
 				}

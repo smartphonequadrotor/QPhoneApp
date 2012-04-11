@@ -26,5 +26,9 @@
     <string name="ready_to_fly_lbl">Ready To Fly!</string>
     <string name="next_btn_txt">Next</string>
     <string name="previous_btn_txt">Previous</string>
+    <string-array name="comm_methods_array">
+        <item>XMPP</item>
+        <item>Direct Socket</item>
+    </string-array>
 
 </resources>
