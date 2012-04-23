@@ -2,13 +2,13 @@ package com.ventus.smartphonequadrotor.qphoneapp.util.json;
 
 public class Commands {
 	private MoveCommand[] Move;
-	private HrpyCommand[] HRPY;
+	private THrpyCommand[] THRPY;
 	private String SystemState;
 	private String[] Debug;
 
-	public Commands(MoveCommand[] move, HrpyCommand[] hrpy, String SystemState, String[] debug) {
+	public Commands(MoveCommand[] move, THrpyCommand[] thrpy, String SystemState, String[] debug) {
 		Move = move;
-		HRPY = hrpy;
+		THRPY = thrpy;
 		this.SystemState = SystemState;
 		this.Debug = debug;
 	}
@@ -17,8 +17,8 @@ public class Commands {
 		return Move;
 	}
 	
-	public HrpyCommand[] getHrpyCommandArray() {
-		return HRPY;
+	public THrpyCommand[] getHrpyCommandArray() {
+		return THRPY;
 	}
 	
 	public String getSystemState() {
@@ -31,6 +31,6 @@ public class Commands {
 
 	@Override
 	public String toString() {
-		return String.format("Move: %1$s\nHrpy: %2$s\nSystemState: %3$s\nDebug: %4$s\n", Move, HRPY, SystemState, Debug);
+		return String.format("Move: %1$s\nHrpy: %2$s\nSystemState: %3$s\nDebug: %4$s\n", Move, THRPY, SystemState, Debug);
 	}
 }

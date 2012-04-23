@@ -83,7 +83,16 @@ public class QcfpCommunication {
 		sendBluetoothMessage(QcfpCommunication.encodeData(buffer, buffer.length));
 	}
 
-	public void sendDesiredHrpy(short height, float[] rpy) throws Exception {
+	public void setDesiredThrottle(int throttle) throws Exception
+	{
+		byte[] buffer = new byte[2];
+		buffer[0] = QcfpCommands.QCFP_SET_THROTTLE;
+		buffer[1] = (byte) (throttle & 0x00FF);
+		buffer[2] = (byte) ((throttle & 0xFF00) >> 8);
+		sendBluetoothMessage(QcfpCommunication.encodeData(buffer, buffer.length));
+	}
+	
+	public void sendDesiredTHrpy(int throttle, short height, float[] rpy) throws Exception {
 		if (rpy == null || rpy.length != 3) 
 			throw new IllegalArgumentException("Roll, pitch, yaw array is illegal");
 		
@@ -98,8 +107,24 @@ public class QcfpCommunication {
 		}
 		heightBuffer.putShort(height);
 		
+		setDesiredThrottle(throttle);
 		sendBluetoothMessage(QcfpCommunication.encodeData(rpyBuffer.array(), rpyBuffer.array().length));
 		sendBluetoothMessage(QcfpCommunication.encodeData(heightBuffer.array(), heightBuffer.array().length));
+	}
+	
+	public void setAltitudeEnable(Boolean enabled) throws Exception
+	{
+		byte[] buffer = new byte[2];
+		buffer[0] = QcfpCommands.QCFP_ALTITUDE_HOLD_EN;
+		if(enabled == true)
+		{
+			buffer[1] = 1;
+		}
+		else
+		{
+			buffer[1] = 0;
+		}
+		sendBluetoothMessage(QcfpCommunication.encodeData(buffer, buffer.length));
 	}
 	
 	/**

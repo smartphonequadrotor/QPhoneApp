@@ -188,11 +188,29 @@ public class MainService extends Service {
 		});
 	}
 
-	public void sendDesiredHrpyToQcb(final int height, final float roll, final float pitch, final float yaw) {
+	public void sendDesiredTHrpyToQcb(final int throttle, final int height, final float roll, final float pitch, final float yaw) {
 		btCommunicationLooper.handler.post(new Runnable() {
 			public void run() {
 				try {
-					qcfpCommunication.sendDesiredHrpy((short)height, new float[] {roll, pitch, yaw});
+					qcfpCommunication.sendDesiredTHrpy(throttle, (short)height, new float[] {roll, pitch, yaw});
+				} catch (Exception e) {
+					String errorStr = "Bluetooth failure: cannot send hrpy command";
+					Message msg = new Message();
+					msg.what = MainServiceHandler.TOAST_MESSAGE;
+					msg.obj = errorStr;
+					msg.arg1 = Toast.LENGTH_LONG;
+					handler.sendMessage(msg);
+					Log.e(TAG, errorStr, e);
+				}
+			}
+		});
+	}
+	
+	public void sendAltitudeHoldToQcb(final boolean enable) {
+		btCommunicationLooper.handler.post(new Runnable() {
+			public void run() {
+				try {
+					qcfpCommunication.setAltitudeEnable(enable);
 				} catch (Exception e) {
 					String errorStr = "Bluetooth failure: cannot send hrpy command";
 					Message msg = new Message();

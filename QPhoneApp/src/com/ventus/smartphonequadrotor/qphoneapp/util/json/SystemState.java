@@ -31,5 +31,15 @@ public enum SystemState {
 	/**
 	 * This indicates that the quadrotor could not calibrate.
 	 */
-	UNABLE_TO_CALIBRATE;
+	UNABLE_TO_CALIBRATE,
+	
+	/**
+	 * This enables automatic altitude hold.
+	 */
+	ALTITUDE_HOLD_ENABLE,
+	
+	/**
+	 * This disables automatic altitude hold.
+	 */
+	ALTITUDE_HOLD_DISABLE;
 }

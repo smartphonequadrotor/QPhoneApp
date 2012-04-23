@@ -8,7 +8,7 @@ import com.ventus.smartphonequadrotor.qphoneapp.services.intents.IntentHandler;
 import com.ventus.smartphonequadrotor.qphoneapp.util.control.ControlLoop;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Envelope;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.HeightSensorResponse;
-import com.ventus.smartphonequadrotor.qphoneapp.util.json.HrpyCommand;
+import com.ventus.smartphonequadrotor.qphoneapp.util.json.THrpyCommand;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.Responses;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.SystemState;
 import com.ventus.smartphonequadrotor.qphoneapp.util.json.TriAxisSensorResponse;
@@ -213,7 +213,8 @@ public class NetworkCommunicationManager {
 							.processMoveCommand(
 									envelope.getCommands()
 											.getMoveCommandArray());
-				} else if (envelope.getCommands().getSystemState() != null
+				}
+				if (envelope.getCommands().getSystemState() != null
 						&& !envelope.getCommands().getSystemState().equals("")) {
 					if (envelope.getCommands().getSystemState()
 							.equals(SystemState.ARMED.toString())) {
@@ -223,18 +224,27 @@ public class NetworkCommunicationManager {
 							.equals(SystemState.CALIBRATING.toString())) {
 						// the user wishes to calibrate the quadrotor
 						owner.sendCalibrateSignalToQcb(true);
+					} else if (envelope.getCommands().getSystemState()
+							.equals(SystemState.ALTITUDE_HOLD_ENABLE.toString())){
+						owner.sendAltitudeHoldToQcb(true);
+					} else if (envelope.getCommands().getSystemState()
+							.equals(SystemState.ALTITUDE_HOLD_DISABLE.toString())){
+						owner.sendAltitudeHoldToQcb(false);
 					}
-				} else if (envelope.getCommands().getHrpyCommandArray() != null
+				}
+				if (envelope.getCommands().getHrpyCommandArray() != null
 						&& envelope.getCommands().getHrpyCommandArray().length > 0) {
 					// use the last element of the array and send that to the
 					// QCB
-					HrpyCommand[] desiredHrpyArray = envelope.getCommands()
+					THrpyCommand[] desiredHrpyArray = envelope.getCommands()
 							.getHrpyCommandArray();
-					HrpyCommand desiredHrpy = desiredHrpyArray[desiredHrpyArray.length - 1];
-					owner.sendDesiredHrpyToQcb(desiredHrpy.getHeight(),
-							desiredHrpy.getRoll(), desiredHrpy.getPitch(),
-							desiredHrpy.getYaw());
-				} else if (envelope.getCommands().getDebug() != null
+					THrpyCommand desiredTHrpy = desiredHrpyArray[desiredHrpyArray.length - 1];
+					owner.sendDesiredTHrpyToQcb(desiredTHrpy.getThrottle(),
+							desiredTHrpy.getHeight(),
+							desiredTHrpy.getRoll(), desiredTHrpy.getPitch(),
+							desiredTHrpy.getYaw());
+				}
+				if (envelope.getCommands().getDebug() != null
 						&& envelope.getCommands().getDebug().length != 0) {
 					for (String debugStr : envelope.getCommands().getDebug()) {
 						owner.sendDebugStringToQcb(debugStr);
